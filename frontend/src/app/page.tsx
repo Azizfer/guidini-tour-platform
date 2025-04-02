@@ -3,7 +3,7 @@ import Hero from '../components/Hero';
 import Footer from '../components/Footer';
 import PopularGuides from "../components/PopularGuides"
 import ChatButton from "../components/ChatButton"
-import PopularActivities from "../components/PopularActivities"
+import PopularActivities from "./Activities/components/PopularActivities"
 import PopularDestinations from "./Destinations/components/PopularDestinations"
 import GlobalRating from "../components/GlobalRating"
 

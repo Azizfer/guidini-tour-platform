@@ -226,7 +226,7 @@ function DestinationCard({ destination, index, hoveredId, setHoveredId }: Destin
 
             <CardFooter className="p-0 pt-4">
               <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
-                <Link href={`Activities/${destination.id}`}>
+                <Link href={`/Activities/${destination.id}`}>
                   Voir les activités
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

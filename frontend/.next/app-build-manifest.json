@@ -16,6 +16,16 @@
       "static/chunks/main-app.js",
       "static/chunks/app/Destinations/page.js"
     ],
+    "/Activities/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Activities/page.js"
+    ],
+    "/Activities/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Activities/[id]/page.js"
+    ],
     "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",

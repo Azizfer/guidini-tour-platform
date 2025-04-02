@@ -45,18 +45,58 @@ export default function Modal({ isOpen, closeModal }: ModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Logique de soumission
-    console.log({
-      userType,
-      email,
-      name,
-      password,
-      interests,
-      qualificationFile,
-    })
+    
+    try {
+      let endpoint = '';
+      let data: any = {};
 
-    // Simuler une connexion réussie
-    closeModal()
+      if (activeTab === 'login') {
+        endpoint = 'http://localhost:5000/api/auth/login';
+        data = { email, password };
+      } else if (activeTab === 'signup') {
+        endpoint = 'http://localhost:5000/api/auth/register';
+        data = {
+          username: name,
+          email,
+          password,
+          userType,
+          ...(userType === 'touriste' && { interests }),
+          ...(userType === 'Guide' && qualificationFile && { qualification: qualificationFile })
+        };
+      } else if (activeTab === 'forgot') {
+        // Handle forgot password if implemented
+        console.log('Forgot password not implemented yet');
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'An error occurred');
+      }
+
+      // Store the token and user data
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify(result.user));
+
+      // Close the modal on success
+      closeModal();
+
+      // Optionally refresh the page or redirect
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error:', error);
+      // You might want to show this error to the user
+      alert(error.message || 'An error occurred');
+    }
   }
 
   const toggleInterest = (interest: string) => {
@@ -322,4 +362,3 @@ export default function Modal({ isOpen, closeModal }: ModalProps) {
     </div>
   )
 }
-
