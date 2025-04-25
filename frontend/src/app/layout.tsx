@@ -1,5 +1,6 @@
 import '@/globals.css';
 import React from 'react';
+import { AuthProvider } from "./LogingContext/AuthContext"; //Make sure the whole app has access to the context
 export default function RootLayout({
   children,
 }: {
@@ -8,7 +9,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
-        {children}
+      <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
