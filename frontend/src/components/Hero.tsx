@@ -2,142 +2,223 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
-import { motion } from "framer-motion"
-import { Clock, Star, Shield, Award, Search, Pause, Play } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ChevronRight, MapPin, Compass, Sun, Palmtree, Utensils, Camera, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 
-export default function Hero() {
-  const [offset, setOffset] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(true)
+// Types d'expériences
+const experienceTypes = [
+  { name: "Plages", icon: Sun, color: "bg-blue-500" },
+  { name: "Culture", icon: Compass, color: "bg-purple-500" },
+  { name: "Nature", icon: Palmtree, color: "bg-green-500" },
+  { name: "Gastronomie", icon: Utensils, color: "bg-orange-500" },
+  { name: "Photographie", icon: Camera, color: "bg-pink-500" },
+]
+
+export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("destinations")
+  const [scrollY, setScrollY] = useState(0)
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.6, ease: "easeOut" },
+    },
+  }
+
+  // Effet de parallaxe au scroll
   useEffect(() => {
-    const handleScroll = () => setOffset(window.pageYOffset)
+    const handleScroll = () => setScrollY(window.scrollY)
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const toggleVideo = () => {
-    const video = document.querySelector("video")
-    if (video) {
-      if (isPlaying) {
-        video.pause()
-      } else {
-        video.play()
-      }
-      setIsPlaying(!isPlaying)
-    }
-  }
-
+  // Gestion de la recherche
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     console.log("Recherche pour:", searchQuery)
     // Logique de recherche
   }
 
-  const features = [
-    { icon: Award, title: "Meilleures activités", description: "Sélectionnées avec soin" },
-    { icon: Clock, title: "Service 24h/24", description: "À votre disposition" },
-    { icon: Star, title: "Avis vérifiés", description: "Voyageurs satisfaits" },
-    { icon: Shield, title: "Prix transparents", description: "Sans surcoûts cachés" },
-  ]
+  // Focus sur l'input de recherche
+  const focusSearch = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }
+
+  // Gestion du bouton de recherche avec animation
+  const toggleSearch = () => {
+    setIsSearchExpanded(!isSearchExpanded)
+    setTimeout(() => {
+      if (!isSearchExpanded && searchInputRef.current) {
+        searchInputRef.current.focus()
+      }
+    }, 100)
+  }
 
   return (
-    <section className="relative h-[85vh] overflow-hidden">
-      <motion.div
-        className="absolute inset-0"
-        style={{
-          y: offset * 0.5,
-        }}
-      >
-        <video className="w-full h-full object-cover" autoPlay={isPlaying} loop muted playsInline preload="auto">
-          <source src="/videos/TunisiaVideo.mp4" type="video/mp4" />
-          Votre navigateur ne supporte pas la lecture de vidéos.
-        </video>
-        <div className="absolute inset-0 bg-black/40 backdrop-filter backdrop-blur-[2px]"></div>
+    <section className="relative min-h-screen overflow-hidden">
+      {/* Image d'arrière-plan avec effet parallaxe */}
+      <motion.div className="absolute inset-0 z-0" style={{ y: scrollY * 0.5 }}>
+        <img
+          src="/images/background.jpg"
+          alt="Tunisia Landscape"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/50"></div>
       </motion.div>
 
-      <div className="relative h-full flex flex-col items-center justify-center text-white px-4 z-10">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-4 drop-shadow-md"
-        >
-          Découvrez la Tunisie Authentique
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-xl md:text-2xl text-center mb-8 font-medium drop-shadow-md max-w-2xl"
-        >
-          Visites guidées et excursions locales pour une expérience inoubliable
-        </motion.p>
-
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="w-full max-w-2xl mb-12"
-          onSubmit={handleSearch}
-        >
-          <div className="flex flex-col sm:flex-row shadow-lg rounded-lg overflow-hidden">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Où voulez-vous partir ?"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-10 py-6 rounded-none sm:rounded-l-lg text-gray-800 focus:outline-none border-0 h-auto"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-none sm:rounded-r-lg transition-colors h-auto"
-            >
-              Rechercher
-            </Button>
-          </div>
-        </motion.form>
-
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          onClick={toggleVideo}
-          className="flex items-center gap-2 mt-4 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full transition-colors backdrop-blur-sm"
-        >
-          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-          <span>{isPlaying ? "Pause" : "Play"} Video</span>
-        </motion.button>
-
+      {/* Contenu principal */}
+      <div className="relative z-10 container mx-auto px-4 py-20 min-h-screen flex flex-col justify-center">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="absolute bottom-0 left-0 right-0 py-6 backdrop-blur-sm bg-black/30"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-5xl mx-auto text-center text-white"
         >
-          <div className="container mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
-              {features.map((feature, index) => (
-                <Card key={index} className="bg-transparent border-0 shadow-none">
-                  <CardContent className="flex flex-col items-center text-center p-2">
-                    <feature.icon className="w-6 h-6 text-blue-400 mb-2" />
-                    <h3 className="text-sm font-semibold mb-1 text-white drop-shadow-md">{feature.title}</h3>
-                    <p className="text-xs text-white/80 drop-shadow-md">{feature.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+          {/* Badge animé */}
+          <motion.div variants={itemVariants} className="inline-block mb-6">
+            <Badge className="bg-teal-500/80 hover:bg-teal-500 text-white px-4 py-1 text-sm backdrop-blur-sm">
+              Explorez la Tunisie comme jamais auparavant
+            </Badge>
+          </motion.div>
+
+          {/* Titre principal avec animation */}
+          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            Découvrez la{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
+              Tunisie Authentique
+            </span>
+          </motion.h1>
+
+          {/* Sous-titre */}
+          <motion.p variants={itemVariants} className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto text-white/90">
+            Visites guidées et excursions locales pour une expérience inoubliable au cœur de la culture tunisienne
+          </motion.p>
+
+          {/* Onglets interactifs */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <Tabs
+              defaultValue="destinations"
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full max-w-2xl mx-auto"
+            >
+              <TabsList className="grid grid-cols-2 bg-white/10 backdrop-blur-md rounded-full p-1">
+                <TabsTrigger
+                  value="destinations"
+                  className="rounded-full data-[state=active]:bg-white data-[state=active]:text-teal-900 data-[state=active]:shadow-md transition-colors"
+                >
+                  Destinations
+                </TabsTrigger>
+                <TabsTrigger
+                  value="experiences"
+                  className="rounded-full data-[state=active]:bg-white data-[state=active]:text-teal-900 data-[state=active]:shadow-md transition-colors"
+                >
+                  Expériences
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="destinations" className="mt-4">
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 shadow-lg border border-white/20">
+                  <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <AnimatePresence>
+                        {isSearchExpanded && (
+                          <motion.div
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "100%", opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="relative flex-1"
+                          >
+                            <MapPin
+                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-teal-400"
+                              size={18}
+                            />
+                            <Input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="Où voulez-vous partir ?"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-10 bg-white/20 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-teal-400 h-12"
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    <Button
+                      type={isSearchExpanded ? "submit" : "button"}
+                      onClick={isSearchExpanded ? undefined : toggleSearch}
+                      className={`bg-teal-500 hover:bg-teal-600 text-white h-12 transition-all duration-300 ${
+                        isSearchExpanded ? "rounded-md" : "rounded-full"
+                      }`}
+                    >
+                      {isSearchExpanded ? (
+                        <>
+                          Rechercher
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          <Search className="mr-2 h-4 w-4" />
+                          Rechercher
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="experiences" className="mt-4">
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 shadow-lg border border-white/20">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {experienceTypes.map((type) => (
+                      <Button
+                        key={type.name}
+                        variant="outline"
+                        onClick={() => {
+                          setSearchQuery(type.name)
+                          setActiveTab("destinations")
+                          setTimeout(focusSearch, 100)
+                        }}
+                        className="flex flex-col items-center justify-center h-24 border-white/20 bg-white/5 hover:bg-white/20 text-white hover:text-white"
+                      >
+                        <div className={`${type.color} p-2 rounded-full mb-2`}>
+                          <type.icon size={20} className="text-white" />
+                        </div>
+                        <span>{type.name}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
         </motion.div>
       </div>
     </section>
   )
 }
-

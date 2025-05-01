@@ -2,10 +2,9 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import Footer from '../components/Footer';
 import PopularGuides from "../components/PopularGuides"
-import ChatButton from "../components/ChatButton"
 import PopularActivities from "./Activities/components/PopularActivities"
-import PopularDestinations from "./Destinations/components/PopularDestinations"
 import GlobalRating from "../components/GlobalRating"
+import PopularDestinations from '@/components/PopularDestinations'; 
 
 import React from "react"; 
 import {ThemeProvider} from 'next-themes';
@@ -25,7 +24,6 @@ function App(){
       </main>
       <GlobalRating />
       <Footer />
-      <ChatButton />
     </div>
     </ThemeProvider>
   );

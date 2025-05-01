@@ -55,7 +55,7 @@ const testimonials = [
 
 export default function GlobalRating() {
   return (
-    <section className="py-16 bg-gray-50 dark:bg-gray-800">
+    <section className="py-16 bg-[#f8f7f4]">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -64,8 +64,8 @@ export default function GlobalRating() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">La confiance de nos clients</h2>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-3 text-gray-800">La confiance de nos clients</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Découvrez pourquoi des milliers de voyageurs nous font confiance pour leurs aventures en Tunisie
           </p>
         </motion.div>
@@ -78,15 +78,16 @@ export default function GlobalRating() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ y: -5, transition: { duration: 0.2 } }}
             >
-              <Card className="h-full border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
+              <Card className="h-full border shadow-md bg-white hover:shadow-lg transition-all duration-300 border-gray-100">
                 <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                    <stat.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center mb-4">
+                    <stat.icon className="w-6 h-6 text-teal-500" />
                   </div>
-                  <div className="text-3xl font-bold mb-1 text-blue-600 dark:text-blue-400">{stat.value}</div>
-                  <div className="text-gray-900 dark:text-white font-medium mb-1">{stat.label}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">{stat.description}</div>
+                  <div className="text-3xl font-bold mb-1 text-teal-600">{stat.value}</div>
+                  <div className="text-gray-800 font-medium mb-1">{stat.label}</div>
+                  <div className="text-sm text-gray-500">{stat.description}</div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -102,10 +103,10 @@ export default function GlobalRating() {
         >
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center">
-              <Badge className="px-4 py-1 text-base bg-blue-600 hover:bg-blue-600">Témoignages</Badge>
+              <Badge className="px-4 py-1 text-base bg-teal-500 text-white">Témoignages</Badge>
             </div>
           </div>
 
@@ -117,44 +118,27 @@ export default function GlobalRating() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
+                whileHover={{ y: -5, scale: 1.02, transition: { duration: 0.2 } }}
               >
-                <Card className="h-full border-0 shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+                <Card className="h-full border shadow-md bg-white hover:shadow-lg transition-all duration-300 border-gray-100 overflow-hidden">
                   <CardContent className="p-6 flex flex-col items-center text-center">
                     <div className="flex mb-4">
                       {[...Array(testimonial.rating)].map((_, i) => (
                         <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                       ))}
                     </div>
-                    <p className="text-lg mb-4 text-gray-900 dark:text-white font-medium italic">
-                      "{testimonial.quote}"
-                    </p>
+                    <p className="text-lg mb-4 text-gray-800 font-medium italic">"{testimonial.quote}"</p>
                     <div className="mt-auto">
-                      <p className="font-semibold text-blue-600 dark:text-blue-400">{testimonial.author}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{testimonial.location}</p>
+                      <p className="font-semibold text-teal-500">{testimonial.author}</p>
+                      <p className="text-sm text-gray-400">{testimonial.location}</p>
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            className="mt-10 text-center"
-          >
-            <Card className="border-0 shadow-md bg-blue-50 dark:bg-blue-900/20 inline-block px-8 py-4">
-              <CardContent className="p-0 flex items-center">
-                <ThumbsUp className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-gray-900 dark:text-white">Plus de 10 000 avis vérifiés</span>
-              </CardContent>
-            </Card>
-          </motion.div>
         </motion.div>
       </div>
     </section>
   )
 }
-

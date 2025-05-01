@@ -1,158 +1,158 @@
 "use client"
 
-import Image from "next/image"
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Star } from "lucide-react"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ChevronRight, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
 
-const activities = [
+// Activités populaires en Tunisie
+const popularActivities = [
   {
+    id: 1,
     name: "Camping à Ain Drahem",
     description: "Découvrez la beauté naturelle des forêts tunisiennes",
-    price: "120",
-    image: "/images/Aindrahem_pic.png",
-    featured: true,
+    image: "/placeholder.svg?height=600&width=800&text=Camping+à+Ain+Drahem",
+    tags: ["Nature", "Aventure", "Détente"],
     rating: 4.8,
     reviews: 124,
   },
   {
+    id: 2,
     name: "Excursion dans le désert",
     description: "Aventure inoubliable dans le Sahara",
-    price: "200",
-    image: "/images/Excursion desert.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Excursion+dans+le+désert",
+    tags: ["Aventure", "Nature", "Expérience"],
     rating: 4.7,
     reviews: 98,
   },
   {
+    id: 3,
     name: "Tour gastronomique",
     description: "Découverte des saveurs tunisiennes",
-    price: "85",
-    image: "/images/Gastronomie.jpg",
-    featured: true,
+    image: "/placeholder.svg?height=600&width=800&text=Tour+gastronomique",
+    tags: ["Gastronomie", "Culture", "Détente"],
     rating: 4.9,
     reviews: 156,
   },
   {
+    id: 4,
     name: "Plongée à Tabarka",
     description: "Explorez les fonds marins méditerranéens",
-    price: "150",
-    image: "/images/the-needles-1075628_640.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Plongée+à+Tabarka",
+    tags: ["Sport", "Mer", "Aventure"],
     rating: 4.6,
     reviews: 87,
   },
 ]
 
-interface ActivityCardProps {
-  activity: {
-    name: string
-    description: string
-    price: string
-    image: string
-    featured?: boolean
-    rating: number
-    reviews: number
-  }
-}
-
-function ActivityCard({ activity }: ActivityCardProps) {
-  const [isHovered, setIsHovered] = useState(false)
-
-  return (
-    <Card
-      className="overflow-hidden h-full border-0 shadow-lg transition-all duration-300 hover:shadow-xl"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="relative h-48 overflow-hidden">
-        <Image
-          src={activity.image || "/placeholder.svg"}
-          alt={activity.name}
-          fill
-          style={{ objectFit: "cover" }}
-          className={`transition-transform duration-500 ${isHovered ? "scale-110" : "scale-100"}`}
-        />
-        {activity.featured && <Badge className="absolute top-2 right-2 bg-blue-600">Populaire</Badge>}
-      </div>
-      <CardContent className="p-4">
-        <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-1">{activity.name}</h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">{activity.description}</p>
-        <div className="flex items-center mb-2">
-          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            {activity.rating}
-            <span className="text-gray-500 dark:text-gray-400 ml-1">({activity.reviews} avis)</span>
-          </span>
-        </div>
-      </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <span className="text-lg font-bold text-gray-900 dark:text-white">{activity.price} DT</span>
-        <Button className="bg-blue-600 hover:bg-blue-700">Réserver</Button>
-      </CardFooter>
-    </Card>
-  )
-}
-
 export default function PopularActivities() {
+  const [currentActivity, setCurrentActivity] = useState(0)
+
+  // Rotation automatique des activités
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentActivity((prev) => (prev + 1) % popularActivities.length)
+    }, 6000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
-    <section className="py-16 bg-white dark:bg-gray-900">
+    <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">Activités Populaires</h2>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-3 text-gray-800">Activités Populaires</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Découvrez les meilleures expériences à vivre lors de votre séjour en Tunisie
           </p>
         </motion.div>
 
-        <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {activities.map((activity, index) => (
-              <CarouselItem key={index} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <ActivityCard activity={activity} />
-                </motion.div>
-              </CarouselItem>
+        <div className="relative h-[400px] rounded-xl overflow-hidden shadow-2xl max-w-6xl mx-auto">
+          <AnimatePresence mode="wait">
+            {popularActivities.map(
+              (activity, index) =>
+                currentActivity === index && (
+                  <motion.div
+                    key={activity.id}
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.7 }}
+                    className="absolute inset-0 hover:scale-105 transition-transform duration-300"
+                  >
+                    <div className="relative h-full">
+                      <img
+                        src={activity.image || "/placeholder.svg"}
+                        alt={activity.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+
+                      <div className="absolute bottom-0 left-0 p-8 w-full">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {activity.tags.map((tag) => (
+                            <Badge key={tag} className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <h3 className="text-3xl font-bold text-white mb-2">{activity.name}</h3>
+                        <p className="text-white/80 mb-2 max-w-2xl">{activity.description}</p>
+                        <div className="flex items-center mb-4">
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
+                          <span className="text-white">
+                            {activity.rating}
+                            <span className="text-white/70 ml-1">({activity.reviews} avis)</span>
+                          </span>
+                        </div>
+                        <Link href="/activities">
+                          <Button className="bg-teal-500 hover:bg-teal-600 text-white">
+                            Explorer cette activité
+                            <ChevronRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                ),
+            )}
+          </AnimatePresence>
+
+          {/* Indicateurs de navigation */}
+          <div className="absolute bottom-4 right-4 flex space-x-2">
+            {popularActivities.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentActivity(index)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all duration-300",
+                  currentActivity === index ? "bg-teal-400 w-6" : "bg-white/50 hover:bg-white",
+                )}
+                aria-label={`Voir activité ${index + 1}`}
+              />
             ))}
-          </CarouselContent>
-          <div className="hidden md:flex justify-center mt-8 gap-2">
-            <CarouselPrevious className="relative inset-0 translate-y-0 bg-blue-600 hover:bg-blue-700 text-white" />
-            <CarouselNext className="relative inset-0 translate-y-0 bg-blue-600 hover:bg-blue-700 text-white" />
           </div>
-        </Carousel>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="flex justify-center mt-10"
         >
-          <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
+          <Button asChild size="lg" className="bg-teal-500 hover:bg-teal-600 text-white font-medium">
             <Link href="/Activities">
               Voir toutes les activités
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ChevronRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         </motion.div>

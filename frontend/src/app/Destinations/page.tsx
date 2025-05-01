@@ -3,7 +3,7 @@
 import  Destinations from "./components/Destinations"
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import ChatButton from '@/components/ChatButton';
+import ChatButton from '@/components/Chatbot';
 import { ThemeProvider } from 'next-themes';
 
 export default function DestinationPage() {

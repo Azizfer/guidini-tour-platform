@@ -9,12 +9,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Calendar, Search, ArrowRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import Header from "@/components/Header"
+import Footer from "@/components/Footer"
 
 const allDestinations = [
   {
     id: 1,
     name: "Carthage",
-    image: "/images/Photo de carthage.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Carthage",
     description: "Site historique UNESCO",
     longDescription:
       "Ancienne cité phénicienne, Carthage est un site archéologique majeur avec des ruines romaines impressionnantes.",
@@ -25,7 +27,7 @@ const allDestinations = [
   {
     id: 2,
     name: "Sidi Bou Said",
-    image: "/images/Photo de sidi bou said.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Sidi+Bou+Said",
     description: "Village pittoresque méditerranéen",
     longDescription:
       "Village aux maisons blanches et bleues perché sur une falaise surplombant la Méditerranée, inspirant de nombreux artistes.",
@@ -36,7 +38,7 @@ const allDestinations = [
   {
     id: 3,
     name: "Djerba",
-    image: "/images/Photo de djerba.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Djerba",
     description: "Île aux mille couleurs",
     longDescription:
       "Île paradisiaque avec des plages de sable fin, une architecture traditionnelle et un riche patrimoine culturel.",
@@ -47,7 +49,7 @@ const allDestinations = [
   {
     id: 4,
     name: "Kairouan",
-    image: "/images/Photo_kairouan.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Kairouan",
     description: "Ville sainte de l'Islam",
     longDescription:
       "Quatrième ville sainte de l'Islam, connue pour sa Grande Mosquée et son architecture islamique préservée.",
@@ -58,7 +60,7 @@ const allDestinations = [
   {
     id: 5,
     name: "Matmata",
-    image: "/images/Photo_matmata.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Matmata",
     description: "Habitations troglodytiques",
     longDescription:
       "Village berbère célèbre pour ses habitations souterraines et ses paysages lunaires, lieu de tournage de Star Wars.",
@@ -69,7 +71,7 @@ const allDestinations = [
   {
     id: 6,
     name: "Hammamet",
-    image: "/images/Photo_hammamet.jpg",
+    image: "/placeholder.svg?height=600&width=800&text=Hammamet",
     description: "Station balnéaire populaire",
     longDescription:
       "Station balnéaire réputée pour ses plages de sable fin, sa médina historique et ses jardins luxuriants.",
@@ -79,11 +81,11 @@ const allDestinations = [
   },
 ]
 
-export default function DestinationsDetailsPage() {
+export default function DestinationsPage() {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
 
-  // Filtres des destinations (comparison entre recherche et desc/nom/location )
+  // Filtres des destinations (comparison entre recherche et desc/nom/location)
   const filteredDestinations = allDestinations.filter(
     (destination) =>
       destination.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,7 +94,8 @@ export default function DestinationsDetailsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-[#f8f7f4]">
+      {/* Header est géré par la page parent */}
       <div className="container mx-auto px-4 py-12">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -100,8 +103,8 @@ export default function DestinationsDetailsPage() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Découvrez la Tunisie</h1>
-          <p className="text-lg max-w-2xl mx-auto text-gray-700 dark:text-gray-300">
+          <h1 className="text-4xl font-bold mb-4 text-gray-900">Découvrez la Tunisie</h1>
+          <p className="text-lg max-w-2xl mx-auto text-gray-700">
             Explorez les plus beaux endroits de la Tunisie, des plages paradisiaques aux sites historiques fascinants.
           </p>
         </motion.div>
@@ -161,6 +164,7 @@ export default function DestinationsDetailsPage() {
           ))}
         </Tabs>
       </div>
+      <Footer />
     </div>
   )
 }
@@ -225,8 +229,8 @@ function DestinationCard({ destination, index, hoveredId, setHoveredId }: Destin
             </CardContent>
 
             <CardFooter className="p-0 pt-4">
-              <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
-                <Link href={`/Activities/${destination.id}`}>
+              <Button asChild className="w-full bg-teal-500 hover:bg-teal-600 text-white">
+                <Link href={`/activities/${destination.id}`}>
                   Voir les activités
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -248,4 +252,3 @@ function DestinationCard({ destination, index, hoveredId, setHoveredId }: Destin
     </motion.div>
   )
 }
-
