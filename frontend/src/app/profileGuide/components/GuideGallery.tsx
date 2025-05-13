@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -15,8 +16,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, ImageIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // Données fictives pour la galerie
 const mockGalleryImages = [
@@ -82,20 +83,49 @@ export default function GuideGallery() {
     setImages(images.filter((image) => image.id !== id))
   }
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.6, ease: "easeOut" },
+    },
+  }
+
   return (
-    <div className="space-y-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Ma Galerie</h2>
+        <motion.h2
+          variants={itemVariants}
+          className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500"
+        >
+          Ma Galerie
+        </motion.h2>
         <Dialog open={isAddImageOpen} onOpenChange={setIsAddImageOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Ajouter une nouvelle image
-            </Button>
+            <motion.div variants={itemVariants}>
+              <Button className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white rounded-full">
+                <Plus className="h-4 w-4" />
+                Ajouter une nouvelle image
+              </Button>
+            </motion.div>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] bg-white/90 backdrop-blur-sm border border-white/20">
             <DialogHeader>
-              <DialogTitle>Ajouter une image à la galerie</DialogTitle>
+              <DialogTitle className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
+                Ajouter une image à la galerie
+              </DialogTitle>
               <DialogDescription>Téléchargez une nouvelle image et associez-la à une visite.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -106,15 +136,16 @@ export default function GuideGallery() {
                   placeholder="Entrez le titre de l'image"
                   value={newImage.title}
                   onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
+                  className="bg-white/50 border-white/20"
                 />
               </div>
               <div className="grid grid-cols-1 gap-2">
                 <Label htmlFor="tourSelect">Visite associée</Label>
                 <Select value={newImage.tourId} onValueChange={(value) => setNewImage({ ...newImage, tourId: value })}>
-                  <SelectTrigger id="tourSelect">
+                  <SelectTrigger id="tourSelect" className="bg-white/50 border-white/20">
                     <SelectValue placeholder="Sélectionnez une visite" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white/90 backdrop-blur-sm border-white/20">
                     {mockTours.map((tour) => (
                       <SelectItem key={tour.id} value={tour.id}>
                         {tour.title}
@@ -125,14 +156,56 @@ export default function GuideGallery() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddImageOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddImageOpen(false)} className="border-white/20">
                 Annuler
               </Button>
-              <Button onClick={handleAddImage}>Télécharger</Button>
+              <Button
+                onClick={handleAddImage}
+                className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white"
+              >
+                Télécharger
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+
+      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {images.map((image, index) => (
+          <motion.div
+            key={image.id}
+            variants={itemVariants}
+            whileHover={{ y: -10, scale: 1.02, transition: { duration: 0.2 } }}
+          >
+            <Card className="overflow-hidden border border-white/20 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="relative">
+                <img src={image.url || "/placeholder.svg"} alt={image.title} className="w-full h-48 object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                  <h3 className="text-white font-bold">{image.title}</h3>
+                  <p className="text-white/80 text-sm">{image.tourName}</p>
+                </div>
+                <Badge className="absolute top-2 right-2 bg-teal-500/80 hover:bg-teal-500 text-white backdrop-blur-sm">
+                  {new Date(image.date).toLocaleDateString()}
+                </Badge>
+              </div>
+              <CardContent className="p-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-teal-500" />
+                  <span className="text-sm text-gray-600">{image.tourName}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteImage(image.id)}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-100/50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
+    </motion.div>
   )
 }

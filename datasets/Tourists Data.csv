@@ -1,0 +1,41 @@
+id_touriste,langues_parlees,pays_origine,Age,preferences_categorie,preferences_prix_max,public_cible
+1,"Arabe,Français",Algérie,22,"Détente, Gastronomie",30,En Famille
+2,"Arabe,Français",Algérie,27,"Gastronomie, Détente, Culture",25,"Entre amis , En famille"
+3,"Arabe,Français",Algérie,40,"Culture, Nature",20,En groupe organisé
+4,"Arabe,Français",Algérie,47,Nature,35,Seul
+5,"Arabe,Français",Algérie,60,"Détente, Gastronomie",40,En couple
+6,"Arabe,Français",Libye,20,"Aventure, Détente, Nature",45,"Entre amis , En couple"
+7,"Arabe,Français",Libye,28,"Gastronomie, Détente",30,Seul 
+8,"Arabe,Français",Libye,38,"Détente, Gastronomie, Culture, Nature",25,En Famille
+9,"Français,Arabe",Maroc,22,Culture,35,En groupe organisé
+10,"Français,Arabe",Maroc,26,"Nature, Détente",50,"En couple , En Famille"
+11,"Français,Arabe",Maroc,43,Aventure,60,En Famille
+12,"Français,Arabe",Maroc,49,"Gastronomie, Culture",40,"En Couple , En Famille"
+13,"Arabe,Français",Tunisie,19,"Détente, Nature",20,En groupe organisé
+14,"Arabe,Français",Tunisie,28,Culture,25,"En famille , Seul"
+15,"Français,Anglais",France,18,Aventure,70,"En groupe organisé , En Famille"
+16,"Français,Anglais",France,34,Culture,45,En Famille
+17,"Français,Anglais",France,42,"Détente, Culture, Nature",50,"En couple , En groupe organisé"
+18,"Français,Anglais",France,52,"Gastronomie, Détente",60,Seul
+19,"Français,Anglais",France,50,"Nature, Détente, Gastronomie",55,En Famille
+20,"Allemand,Anglais",Allemagne,20,"Nature, Culture",65,En couple
+21,"Allemand,Anglais",Allemagne,26,Aventure,75,En groupe organisé
+22,"Allemand,Anglais",Allemagne,44,Culture,50,"En famille , En Couple"
+23,"Allemand,Anglais",Allemagne,46,Détente,45,"En Famille , Seul"
+24,Anglais,Royaume-Uni,22,Aventure,80,Aventuriers
+25,Anglais,Royaume-Uni,30,Culture,55,En Famille
+26,Anglais,Royaume-Uni,40,Nature,60,En Couple
+27,"Italien,Français",Italie,21,"Gastronomie, Culture",40,En groupe organisé
+28,"Italien,Français",Italie,26,"Détente, Gastronomie, Culture",50,"En Famille , En Couple"
+29,"Italien,Français",Italie,38,"Culture, Nature",45,"En Famille , En goupe organisé"
+30,"Français,Néerlandais",Belgique,20,Aventure,55,Seul
+31,"Français,Néerlandais",Belgique,32,Nature,65,En groupe organisé
+32,"Anglais,Arabe",Égypte,41,"Détente, Culture",35,En Famille
+33,"Anglais,Arabe",Arabie Saoudite,27,"Gastronomie, Aventure",90,En Couple 
+34,"Russe,Anglais",Russie,43,"Culture, Détente",60,En goupe organisé
+35,"Chinois,Anglais",Chine,25,"Aventure, Gastronomie, Culture",85,En Famille 
+36,"Espagnol,Français",Espagne,21,"Détente, Aventure",40,En Couple
+37,"Portugais,Français",Portugal,45,"Nature, Détente",50,En groupe organisé
+38,"Anglais,Arabe",Qatar,36,"Gastronomie, Culture",100,Seul
+39,"Anglais,Français",Canada,26,Aventure,70,En Famille
+40,"Anglais,Hindi",Inde,37,"Culture, Détente",45,En couple

@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Check, MessageSquare, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // Données fictives pour les notifications
 const mockNotifications = [
@@ -81,64 +83,127 @@ export default function GuideNotifications() {
     const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
 
     if (diffInDays === 0) {
-        return `Aujourd'hui à ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-      } else if (diffInDays === 1) {
-        return `Hier à ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-      } else if (diffInDays < 7) {
-        return `Il y a ${diffInDays} jours`
-      } else {
-        return date.toLocaleDateString()
-      }
-  }  
+      return `Aujourd'hui à ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    } else if (diffInDays === 1) {
+      return `Hier à ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    } else if (diffInDays < 7) {
+      return `Il y a ${diffInDays} jours`
+    } else {
+      return date.toLocaleDateString()
+    }
+  }
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.6, ease: "easeOut" },
+    },
+  }
 
   return (
-    <div className="space-y-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Notifications</h2>
+        <motion.h2
+          variants={itemVariants}
+          className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500"
+        >
+          Notifications
+        </motion.h2>
         {notifications.some((notification) => !notification.isRead) && (
-          <Button variant="outline" onClick={markAllAsRead}>
-            Marquer tout comme lu
-          </Button>
+          <motion.div variants={itemVariants}>
+            <Button
+              variant="outline"
+              onClick={markAllAsRead}
+              className="border border-teal-200 hover:bg-teal-50 text-teal-600"
+            >
+              Marquer tout comme lu
+            </Button>
+          </motion.div>
         )}
       </div>
 
-      <div className="space-y-4">
-        {notifications.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10">
-              <Check className="h-10 w-10 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Aucune notification à afficher</p>
-            </CardContent>
-          </Card>
-        ) : (
-          notifications.map((notification) => (
-            <Card key={notification.id} className={notification.isRead ? "bg-background" : "bg-primary/5"}>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    {getNotificationIcon(notification.type)}
-                    <CardTitle className="text-lg">{notification.title}</CardTitle>
-                  </div>
-                  <CardDescription>{formatDate(notification.date)}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p>{notification.message}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between pt-0">
-                <Button variant="ghost" size="sm" onClick={() => deleteNotification(notification.id)}>
-                  Supprimer
-                </Button>
-                {!notification.isRead && (
-                  <Button variant="outline" size="sm" onClick={() => markAsRead(notification.id)}>
-                    Marquer comme lu
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))
-        )}
-      </div>
-    </div>
+      <AnimatePresence>
+        <motion.div variants={containerVariants} className="space-y-4">
+          {notifications.length === 0 ? (
+            <motion.div variants={itemVariants}>
+              <Card className="bg-white/90 backdrop-blur-sm border border-white/20">
+                <CardContent className="flex flex-col items-center justify-center py-10">
+                  <Check className="h-10 w-10 text-teal-500 mb-4" />
+                  <p className="text-muted-foreground">Aucune notification à afficher</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            notifications.map((notification) => (
+              <motion.div
+                key={notification.id}
+                variants={itemVariants}
+                layout
+                exit={{ opacity: 0, x: -100 }}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+              >
+                <Card
+                  className={`${
+                    notification.isRead ? "bg-white/90" : "bg-gradient-to-r from-teal-50/90 to-blue-50/90"
+                  } backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-md transition-all duration-300`}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <CardTitle className="text-lg">{notification.title}</CardTitle>
+                      </div>
+                      <CardDescription>
+                        <Badge className="bg-teal-500/80 hover:bg-teal-500 text-white text-xs backdrop-blur-sm">
+                          {formatDate(notification.date)}
+                        </Badge>
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p>{notification.message}</p>
+                  </CardContent>
+                  <CardFooter className="flex justify-between pt-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteNotification(notification.id)}
+                      className="text-red-500 hover:bg-red-50"
+                    >
+                      Supprimer
+                    </Button>
+                    {!notification.isRead && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markAsRead(notification.id)}
+                        className="border-teal-200 hover:bg-teal-50 text-teal-600"
+                      >
+                        Marquer comme lu
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ))
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   )
 }

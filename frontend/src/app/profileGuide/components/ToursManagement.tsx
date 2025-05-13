@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -21,57 +21,33 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Tour, createTour, deleteTour as apiDeleteTour, getToursByGuide, toggleTourVisibility as apiToggleVisibility, useToursStore } from "@/services/toursService"
+import { useAuth } from "@/app/LogingContext/AuthContext"
 
-// Données simulées pour les visites
-const mockTours = [
-  {
-    id: "1",
-    title: "Visite historique de la médina de Sousse",
-    description: "Explore la médina ancienne de Sousse avec son histoire riche et son architecture magnifique.",
-    location: "Sousse",
-    duration: "3 heures",
-    price: 45,
-    maxParticipants: 10,
-    date: "2023-07-15",
-    time: "09:00",
-    isPublic: true,
-    image: "/placeholder.svg?height=200&width=300",
-    bookings: 3,
-  },
-  {
-    id: "2",
-    title: "Visite du Ribat de Monastir et du mausolée",
-    description: "Visite du célèbre fort du Ribat et du mausolée de Bourguiba à Monastir.",
-    location: "Monastir",
-    duration: "4 heures",
-    price: 55,
-    maxParticipants: 8,
-    date: "2023-07-20",
-    time: "10:00",
-    isPublic: true,
-    image: "/placeholder.svg?height=200&width=300",
-    bookings: 5,
-  },
-  {
-    id: "3",
-    title: "Expérience plage de Sousse",
-    description: "Profite des magnifiques plages de Sousse avec diverses activités nautiques.",
-    location: "Sousse",
-    duration: "5 heures",
-    price: 65,
-    maxParticipants: 12,
-    date: "2023-07-25",
-    time: "08:30",
-    isPublic: false,
-    image: "/placeholder.svg?height=200&width=300",
-    bookings: 0,
-  },
-]
+// Type pour les toasts
+interface ToastProps {
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
+}
+
+// Hook personnalisé pour les toasts (version simplifiée)
+function useToast() {
+  const showToast = (props: ToastProps) => {
+    console.log(`Toast: ${props.title} - ${props.description}`);
+    // Dans une implémentation réelle, cela afficherait un toast UI
+  };
+  
+  return { toast: showToast };
+}
 
 export default function GestionDesVisites() {
-  const [tours, setTours] = useState(mockTours)
+  const [tours, setTours] = useState<Tour[]>([])
   const [isAddTourOpen, setIsAddTourOpen] = useState(false)
-  const [newTour, setNewTour] = useState({
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
+  const { user } = useAuth()
+  const [newTour, setNewTour] = useState<Omit<Tour, 'id' | '_id'>>({
     title: "",
     description: "",
     location: "",
@@ -81,36 +57,200 @@ export default function GestionDesVisites() {
     date: "",
     time: "",
     isPublic: true,
+    category: "Histoire"
   })
 
-  const handleAddTour = () => {
-    const tour = {
-      ...newTour,
-      id: (tours.length + 1).toString(),
-      image: "/placeholder.svg?height=200&width=300",
-      bookings: 0,
+  // Charger les tours du guide au chargement du composant
+  useEffect(() => {
+    const fetchTours = async () => {
+      try {
+        setIsLoading(true)
+        if (user?.id) {
+          const data = await getToursByGuide(user.id)
+          setTours(data as Tour[])
+        } else {
+          // Message d'erreur si l'utilisateur n'est pas connecté
+          toast({
+            title: "Erreur d'authentification",
+            description: "Vous devez être connecté pour voir vos tours.",
+            variant: "destructive"
+          })
+          setTours([]) // Initialiser avec un tableau vide au lieu des données simulées
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des tours:", error)
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger vos tours. Veuillez réessayer plus tard.",
+          variant: "destructive"
+        })
+        setTours([]) // Initialiser avec un tableau vide au lieu des données simulées
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setTours([...tours, tour])
-    setIsAddTourOpen(false)
-    setNewTour({
-      title: "",
-      description: "",
-      location: "",
-      duration: "",
-      price: 0,
-      maxParticipants: 0,
-      date: "",
-      time: "",
-      isPublic: true,
-    })
+
+    fetchTours()
+  }, [user])
+
+  const handleAddTour = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Vérifier si l'utilisateur est un guide
+      if (!user || user.userType !== 'guide') {
+        console.error("L'utilisateur n'est pas un guide. Type d'utilisateur:", user?.userType);
+        toast({
+          title: "Accès refusé",
+          description: "Seuls les guides peuvent créer des visites.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Vérifier que l'ID utilisateur est disponible
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        console.error("ID utilisateur non trouvé dans localStorage");
+        toast({
+          title: "Erreur d'authentification",
+          description: "Veuillez vous reconnecter pour créer une visite.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Ajouter des logs pour déboguer
+      console.log("Données du tour à créer:", newTour)
+      console.log("Utilisateur connecté:", user)
+      console.log("ID utilisateur depuis localStorage:", userId)
+      
+      // Vérifier que toutes les données requises sont présentes
+      if (!newTour.title || !newTour.description || !newTour.location || 
+          !newTour.duration || !newTour.date || !newTour.time || 
+          newTour.price <= 0 || newTour.maxParticipants <= 0) {
+        console.error("Données du tour incomplètes:", newTour)
+        toast({
+          title: "Erreur",
+          description: "Veuillez remplir tous les champs obligatoires.",
+          variant: "destructive"
+        })
+        setIsLoading(false)
+        return
+      }
+      
+      // Ajouter l'ID du guide aux données du tour
+      const tourDataWithGuideId = {
+        ...newTour,
+        guideId: userId
+      };
+      
+      // Créer le tour via l'API
+      console.log("Appel de createTour avec:", tourDataWithGuideId)
+      const createdTour = await createTour(tourDataWithGuideId)
+      console.log("Tour créé avec succès:", createdTour)
+      
+      // Ajouter le tour créé à l'état local
+      setTours([...tours, createdTour as Tour])
+      
+      // Fermer le modal et réinitialiser le formulaire
+      setIsAddTourOpen(false)
+      setNewTour({
+        title: "",
+        description: "",
+        location: "",
+        duration: "",
+        price: 0,
+        maxParticipants: 0,
+        date: "",
+        time: "",
+        isPublic: true,
+        category: "Histoire"
+      })
+      
+      toast({
+        title: "Succès",
+        description: "Votre tour a été créé avec succès!"
+      })
+    } catch (error) {
+      // Utiliser console.log au lieu de console.error pour éviter l'erreur TypeScript
+      console.log("Erreur détaillée lors de la création du tour:", error)
+      
+      // Afficher plus de détails sur l'erreur
+      if (error instanceof Error) {
+        toast({
+          title: "Erreur",
+          description: `Impossible de créer le tour: ${error.message}`,
+          variant: "destructive"
+        })
+      } else if (typeof error === 'string') {
+        toast({
+          title: "Erreur",
+          description: `Impossible de créer le tour: ${error}`,
+          variant: "destructive"
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de créer le tour. Veuillez réessayer.",
+          variant: "destructive"
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const toggleTourVisibility = (id: string) => {
-    setTours(tours.map((tour) => (tour.id === id ? { ...tour, isPublic: !tour.isPublic } : tour)))
+  const toggleTourVisibility = async (id: string) => {
+    try {
+      setIsLoading(true)
+      
+      // Appeler l'API pour changer la visibilité
+      const updatedTour = await apiToggleVisibility(id) as Tour
+      
+      // Mettre à jour l'état local
+      setTours(tours.map((tour) => (tour._id === id || tour.id === id ? { ...tour, isPublic: !tour.isPublic } : tour)))
+      
+      toast({
+        title: "Succès",
+        description: `Le tour est maintenant ${updatedTour.isPublic ? 'visible' : 'invisible'} pour le public.`
+      })
+    } catch (error) {
+      console.error("Erreur lors du changement de visibilité:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de changer la visibilité du tour."
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const deleteTour = (id: string) => {
-    setTours(tours.filter((tour) => tour.id !== id))
+  const deleteTour = async (id: string) => {
+    try {
+      setIsLoading(true)
+      
+      // Appeler l'API pour supprimer le tour
+      await apiDeleteTour(id)
+      
+      // Mettre à jour l'état local
+      setTours(tours.filter((tour) => tour._id !== id && tour.id !== id))
+      
+      toast({
+        title: "Succès",
+        description: "Le tour a été supprimé avec succès."
+      })
+    } catch (error) {
+      console.error("Erreur lors de la suppression du tour:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le tour."
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -264,7 +404,7 @@ export default function GestionDesVisites() {
         <TabsContent value="all" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tours.map((tour) => (
-              <TourCard key={tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
+              <TourCard key={tour._id || tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
             ))}
           </div>
         </TabsContent>
@@ -273,7 +413,7 @@ export default function GestionDesVisites() {
             {tours
               .filter((tour) => tour.isPublic)
               .map((tour) => (
-                <TourCard key={tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
+                <TourCard key={tour._id || tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
               ))}
           </div>
         </TabsContent>
@@ -282,7 +422,7 @@ export default function GestionDesVisites() {
             {tours
               .filter((tour) => !tour.isPublic)
               .map((tour) => (
-                <TourCard key={tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
+                <TourCard key={tour._id || tour.id} tour={tour} onToggleVisibility={toggleTourVisibility} onDelete={deleteTour} />
               ))}
           </div>
         </TabsContent>
@@ -292,25 +432,13 @@ export default function GestionDesVisites() {
 }
 
 interface TourCardProps {
-  tour: {
-    id: string
-    title: string
-    description: string
-    location: string
-    duration: string
-    price: number
-    maxParticipants: number
-    date: string
-    time: string
-    isPublic: boolean
-    image: string
-    bookings: number
-  }
+  tour: Tour
   onToggleVisibility: (id: string) => void
   onDelete: (id: string) => void
 }
 
 function TourCard({ tour, onToggleVisibility, onDelete }: TourCardProps) {
+  const tourId = tour._id || tour.id || "" // Utiliser _id (MongoDB) ou id (fallback)
   return (
     <Card className="overflow-hidden">
       <div className="relative h-48">
@@ -330,7 +458,7 @@ function TourCard({ tour, onToggleVisibility, onDelete }: TourCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="flex items-center gap-2" onClick={() => onToggleVisibility(tour.id)}>
+              <DropdownMenuItem className="flex items-center gap-2" onClick={() => onToggleVisibility(tourId)}>
                 {tour.isPublic ? (
                   <>
                     <EyeOff className="h-4 w-4" />
@@ -347,7 +475,7 @@ function TourCard({ tour, onToggleVisibility, onDelete }: TourCardProps) {
                 <Edit className="h-4 w-4" />
                 <span>Modifier la visite</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-2 text-red-500" onClick={() => onDelete(tour.id)}>
+              <DropdownMenuItem className="flex items-center gap-2 text-red-500" onClick={() => onDelete(tourId)}>
                 <Trash2 className="h-4 w-4" />
                 <span>Supprimer la visite</span>
               </DropdownMenuItem>

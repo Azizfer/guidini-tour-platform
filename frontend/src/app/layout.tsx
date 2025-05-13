@@ -2,6 +2,7 @@ import '@/globals.css';
 import React from 'react';
 import { AuthProvider } from "./LogingContext/AuthContext"; //Make sure the whole app has access to the context
 import ClientWrapper from '../components/ClientWrapper';
+import { ThemeProvider } from 'next-themes';
 
 
 export default function RootLayout({
@@ -10,12 +11,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body>
-        <AuthProvider>
-          {children}
-          <ClientWrapper />
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <AuthProvider>
+            {children}
+            <ClientWrapper />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
