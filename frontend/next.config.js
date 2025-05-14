@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['flagcdn.com', 'localhost'], 
+    domains: ['flagcdn.com', 'localhost', 'ferf1mheo22r9ira.public.blob.vercel-storage.com'], 
     remotePatterns: [
       {
         protocol: 'http',

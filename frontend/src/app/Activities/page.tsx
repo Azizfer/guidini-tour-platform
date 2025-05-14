@@ -3,6 +3,7 @@
 import AllActivities from "./components/AllActivities"
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ChatButton from '@/components/Chatbot';
 import { ThemeProvider } from 'next-themes';
 
 export default function ActvitiesPage() {
@@ -14,6 +15,7 @@ export default function ActvitiesPage() {
             <AllActivities />
           </main>
           <Footer />
+          <ChatButton />
         </div>
       </ThemeProvider>
     );

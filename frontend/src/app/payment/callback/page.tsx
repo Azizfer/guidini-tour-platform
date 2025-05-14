@@ -40,6 +40,25 @@ export default function PaymentCallback() {
             setMessage('Paiement réussi! Votre réservation est confirmée.')
             // Clear the pending reservation data
             localStorage.removeItem('pendingReservation')
+            
+            // Set the pendingPayment flag for PaymentStatusChecker to display success message
+            localStorage.setItem('pendingPayment', 'true')
+            
+            // Store the orderId for the success message
+            const orderId = urlParams.get('order_id')
+            if (orderId) {
+              localStorage.setItem('currentOrderId', orderId)
+            }
+            
+            // Check if there's a redirect URL stored
+            const redirectUrl = localStorage.getItem('redirectAfterPayment') || '/Activities'
+            
+            // Automatically redirect after a short delay
+            setTimeout(() => {
+              router.push(redirectUrl)
+              // Clear the redirect URL
+              localStorage.removeItem('redirectAfterPayment')
+            }, 2000) // 2 second delay to show success message
           },
           () => {
             setStatus('error')
@@ -76,10 +95,10 @@ export default function PaymentCallback() {
             <h2 className="text-xl font-semibold mb-2">Paiement réussi!</h2>
             <p className="text-gray-600 mb-6">{message}</p>
             <Button 
-              onClick={() => router.push('/')} 
+              onClick={() => router.push('/Activities')} 
               className="bg-teal-600 hover:bg-teal-700"
             >
-              Retour à l'accueil
+              Retour aux activités
             </Button>
           </>
         )}
@@ -90,10 +109,10 @@ export default function PaymentCallback() {
             <h2 className="text-xl font-semibold mb-2">Échec du paiement</h2>
             <p className="text-gray-600 mb-6">{message}</p>
             <Button 
-              onClick={() => router.push('/')} 
+              onClick={() => router.push('/Activities')} 
               className="bg-teal-600 hover:bg-teal-700"
             >
-              Retour à l'accueil
+              Retour aux activités
             </Button>
           </>
         )}

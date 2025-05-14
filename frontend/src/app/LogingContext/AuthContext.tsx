@@ -10,10 +10,13 @@ interface User {
   _id?: string // MongoDB ID format
   username?: string
   name?: string // Added to match backend response
+  firstName?: string
+  lastName?: string
   email?: string
   token?: string
   profileImage?: string
   userType?: string
+  phoneNumber?: string
   preferences?: any
 }
 

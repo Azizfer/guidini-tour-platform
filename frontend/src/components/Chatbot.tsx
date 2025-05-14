@@ -3,9 +3,11 @@
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Send, MessageCircle, X, Loader2, MessageSquare } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { X, Loader2, ArrowRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { cn } from "@/lib/utils"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 
 interface Message {
   id: string
@@ -26,8 +28,9 @@ export default function Chatbot() {
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -38,10 +41,24 @@ export default function Chatbot() {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        inputRef.current?.focus()
+        textareaRef.current?.focus()
       }, 100)
     }
   }, [isOpen])
+
+  const adjustHeight = (reset = false) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    if (reset) {
+      textarea.style.height = "40px"
+      return
+    }
+
+    textarea.style.height = "40px"
+    const scrollHeight = textarea.scrollHeight
+    textarea.style.height = `${Math.min(scrollHeight, 200)}px`
+  }
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -57,6 +74,7 @@ export default function Chatbot() {
 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
+    adjustHeight(true)
     setIsLoading(true)
 
     try {
@@ -115,97 +133,136 @@ export default function Chatbot() {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
   return (
     <>
       {/* Chatbot container */}
-      <div className={`fixed bottom-4 right-4 z-50 flex flex-col items-end ${isOpen ? "w-[350px]" : "w-auto"}`}>
+      <div className={`fixed bottom-4 right-4 z-50 flex flex-col items-end ${isOpen ? "w-[380px]" : "w-auto"}`}>
         {/* Chatbot modal */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="w-full bg-white rounded-lg shadow-xl overflow-hidden mb-3 border border-gray-200"
+              className="w-full overflow-hidden mb-3"
               initial={{ opacity: 0, y: 20, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: 20, height: 0 }}
               transition={{ duration: 0.3 }}
               style={{ maxHeight: "80vh" }}
             >
-              {/* Header */}
-              <div className="bg-teal-500 text-white p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <h3 className="font-medium text-sm">Guidini Assistant</h3>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-white hover:bg-white/20"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <Card className="border-none shadow-xl rounded-[30px] overflow-hidden backdrop-blur-sm bg-white/95">
+                {/* Header */}
+                <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-3 flex flex-row items-center justify-between space-y-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium">Guidini Assistant</h3>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-white hover:bg-white/20"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
 
-              {/* Messages */}
-              <div className="h-[350px] overflow-y-auto p-3 bg-gray-50">
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      {message.role === "assistant" && (
-                        <div className="w-7 h-7 mr-2 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
-                          <MessageCircle className="h-3.5 w-3.5 text-white" />
+                {/* Messages */}
+                <CardContent className="p-0">
+                  <div className="h-[350px] overflow-y-auto p-4 bg-gray-50/80">
+                    <div className="space-y-4">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          {message.role === "assistant" && (
+                            <div className="w-2 h-2 mr-2 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 flex-shrink-0 mt-2"></div>
+                          )}
+                          <div
+                            className={`max-w-[80%] rounded-[18px] p-3 text-sm ${
+                              message.role === "user"
+                                ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-tr-none shadow-md"
+                                : "bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-md"
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <div className="w-2 h-2 mr-2 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 flex-shrink-0 mt-2"></div>
+                          <div className="max-w-[80%] rounded-[18px] p-3 bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-md">
+                            <div className="flex items-center">
+                              <div className="flex space-x-1">
+                                <div
+                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                                  style={{ animationDelay: "0ms" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                                  style={{ animationDelay: "150ms" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                                  style={{ animationDelay: "300ms" }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
-                      <div
-                        className={`max-w-[80%] rounded-lg p-2.5 text-sm ${
-                          message.role === "user"
-                            ? "bg-teal-500 text-white rounded-tr-none"
-                            : "bg-white text-gray-800 border border-gray-200 rounded-tl-none"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      </div>
+                      <div ref={messagesEndRef} />
                     </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="w-7 h-7 mr-2 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
-                        <MessageCircle className="h-3.5 w-3.5 text-white" />
-                      </div>
-                      <div className="max-w-[80%] rounded-lg p-2.5 bg-white text-gray-800 border border-gray-200 rounded-tl-none">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-500" />
-                          <p className="text-xs text-gray-400">En train d'écrire...</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
+                  </div>
+                </CardContent>
 
-              {/* Input */}
-              <form onSubmit={handleSendMessage} className="p-2 bg-gray-100 border-t border-gray-200 flex gap-2">
-                <Input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Tapez votre message..."
-                  className="flex-1 text-sm h-9 bg-white border-gray-200 text-gray-800 placeholder:text-gray-500 focus-visible:ring-teal-600"
-                  disabled={isLoading}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="bg-teal-500 hover:bg-teal-600 text-white rounded-full h-9 w-9 p-0"
-                  disabled={!input.trim() || isLoading}
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </form>
+                {/* Input */}
+                <CardFooter className="p-3 bg-white/90 border-t border-gray-100">
+                  <div className="w-full rounded-[20px] bg-black/5 p-1">
+                    <div className="relative">
+                      <Textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={(e) => {
+                          setInput(e.target.value)
+                          adjustHeight()
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Tapez votre message..."
+                        className={cn(
+                          "w-full rounded-[18px] pl-3 pr-10 placeholder:text-black/50 border-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-black resize-none text-wrap py-2.5 bg-transparent",
+                          "min-h-[45px] text-sm",
+                        )}
+                        disabled={isLoading}
+                      />
+
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <button
+                          type="button"
+                          onClick={handleSendMessage}
+                          disabled={!input.trim() || isLoading}
+                          className={cn(
+                            "rounded-full bg-gradient-to-r from-teal-500 to-teal-600 p-2 text-white shadow-md transition-all hover:shadow-lg",
+                            (!input.trim() || isLoading) && "opacity-50",
+                          )}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ArrowRight className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </CardFooter>
+              </Card>
             </motion.div>
           )}
         </AnimatePresence>
@@ -213,13 +270,32 @@ export default function Chatbot() {
         {/* Chatbot toggle button */}
         <motion.button
           className={`rounded-full shadow-lg flex items-center justify-center ${
-            isOpen ? "bg-red-500 hover:bg-red-600 w-10 h-10" : "bg-teal-500 hover:bg-teal-600 w-12 h-12"
+            isOpen
+              ? "bg-red-500 hover:bg-red-600 w-12 h-12"
+              : "bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 w-14 h-14"
           }`}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X className="h-5 w-5 text-white" /> : <MessageSquare className="h-5 w-5 text-white" />}
+          {isOpen ? (
+            <X className="h-5 w-5 text-white" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="size-6 text-white"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"
+              />
+            </svg>
+          )}
         </motion.button>
       </div>
     </>

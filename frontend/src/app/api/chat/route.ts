@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const requestData = await request.json();
     
     // URL du backend (à configurer selon votre environnement)
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000/api/chat';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001/api/chat';
     
     console.log('Relais de la requête vers le backend:', backendUrl);
     

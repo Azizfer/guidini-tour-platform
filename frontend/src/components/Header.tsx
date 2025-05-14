@@ -92,8 +92,17 @@ export default function Header() {
   }, [])
 
   // Navigate to the auth pages
-  const navigateToLogin = () => router.push("/auth/login")
-  const navigateToRegister = () => router.push("/auth/register")
+  const navigateToLogin = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push("/auth/login")
+  }
+  
+  const navigateToRegister = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push("/auth/register")
+  }
 
   // Handle logout
   const handleLogout = () => {
@@ -292,7 +301,7 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={navigateToLogin}
+                  onClick={(e) => navigateToLogin(e)}
                   className="rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-all duration-300"
                 >
                   Se connecter
@@ -300,7 +309,7 @@ export default function Header() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={navigateToRegister}
+                  onClick={(e) => navigateToRegister(e)}
                   className="bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white transition-all duration-300 shadow hover:shadow-md rounded-full px-4 py-2 text-sm font-medium border border-teal-400/50"
                 >
                   S'inscrire
