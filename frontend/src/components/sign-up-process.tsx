@@ -39,7 +39,7 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   // Form data
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [password, setPassword] = useState("") // Empty password initially
   const [userType, setUserType] = useState<UserType>("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [profileImage, setProfileImage] = useState<File | null>(null)
@@ -49,8 +49,11 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   const [travelCompanions, setTravelCompanions] = useState<string[]>([])
   const [budget, setBudget] = useState<string[]>([])
   const [expertise, setExpertise] = useState<string[]>([])
+  const [yearsOfExperience, setYearsOfExperience] = useState<number>(0)
+  const [description, setDescription] = useState<string>("")
   const [idCard, setIdCard] = useState<File | null>(null)
   const [certificate, setCertificate] = useState<File | null>(null)
+  const [registrationError, setRegistrationError] = useState<string>("")
 
   // Get steps based on user type
   const getSteps = () => {
@@ -196,6 +199,10 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                   setExpertise={setExpertise}
                   languages={languages}
                   setLanguages={setLanguages}
+                  yearsOfExperience={yearsOfExperience}
+                  setYearsOfExperience={setYearsOfExperience}
+                  description={description}
+                  setDescription={setDescription}
                   onNext={goToNext}
                   onPrev={goToPrev}
                 />
@@ -216,45 +223,77 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                 <SuccessStep
                   onFinish={async () => {
                     try {
-                      // For demo purposes, we'll just log the data
-                      console.log("Registration data:", {
+                      // Reset any previous errors
+                      setRegistrationError("");
+                      
+                      // Import auth service for registration
+                      const authService = (await import('@/services/authService')).default;
+                      
+                      // Prepare registration data
+                      const registrationData = {
                         name,
                         email,
                         password,
                         userType,
-                        profileImage: profileImage ? "Image uploaded" : null,
+                        profileImage,
                         languages,
-                        preferences,
+                        travelPurpose: preferences, // Map preferences to travelPurpose
                         travelCompanions,
                         budget,
+                        // Guide specific fields
                         expertise,
+                        yearsOfExperience,
+                        description,
+                        idCard,
+                        certificate
+                      };
+                      
+                      console.log("Sending registration data to API:", {
+                        ...registrationData,
+                        password: "[HIDDEN]",
+                        profileImage: profileImage ? "Image uploaded" : null,
                         idCard: idCard ? "ID Card uploaded" : null,
                         certificate: certificate ? "Certificate uploaded" : null,
-                      })
+                      });
 
-                      // Mock successful registration
-                      // In a real app, you would send this data to your API
-                      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-                      // Simulate successful registration
-                      window.dispatchEvent(
-                        new CustomEvent("userLoggedIn", {
-                          detail: {
-                            email: email,
-                            name: name,
-                            userType: userType,
-                            profileImage: profileImagePreview,
-                          },
-                        }),
-                      )
-
-                      // Redirect to login page after short delay
-                      setTimeout(() => {
-                        onBackToSignIn()
-                      }, 1500)
+                      try {
+                        // Send registration data to API
+                        const response = await authService.register(registrationData);
+                        console.log("Registration successful:", response);
+                        
+                        // Redirect to login page after short delay
+                        setTimeout(() => {
+                          onBackToSignIn();
+                        }, 1500);
+                      } catch (error: any) {
+                        console.error("Registration error:", error);
+                        
+                        // Handle specific error cases
+                        if (error.response?.data) {
+                          const errorData = error.response.data;
+                          
+                          // Check for duplicate username error
+                          if (errorData.field === 'username' || (errorData.error && errorData.error.includes('nom d\'utilisateur'))) {
+                            setRegistrationError("Ce nom d'utilisateur est déjà utilisé. Veuillez en choisir un autre.");
+                            return;
+                          }
+                          
+                          // Check for duplicate email error
+                          if (errorData.field === 'email' || (errorData.error && errorData.error.includes('email'))) {
+                            setRegistrationError("Cette adresse email est déjà utilisée. Veuillez en utiliser une autre.");
+                            return;
+                          }
+                          
+                          // Generic error message from server
+                          setRegistrationError(errorData.error || "Une erreur est survenue lors de l'inscription.");
+                        } else {
+                          // Network or other errors
+                          setRegistrationError(error.message || "Une erreur de connexion est survenue.");
+                        }
+                      }
                     } catch (error: any) {
-                      console.error("Registration error:", error)
-                      alert(`Erreur lors de l'inscription: ${error.message || "Une erreur est survenue"}`)
+                      console.error("Registration process error:", error);
+                      setRegistrationError("Une erreur inattendue est survenue. Veuillez réessayer.");
                     }
                   }}
                 />

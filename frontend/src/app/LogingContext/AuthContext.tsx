@@ -132,6 +132,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     checkAuth()
+
+    // Add listener for logoutRequested event from ProfilePopover
+    const handleLogoutRequested = () => {
+      window.dispatchEvent(new CustomEvent("openLogoutConfirmation"))
+    }
+
+    window.addEventListener("logoutRequested", handleLogoutRequested)
+
+    return () => {
+      window.removeEventListener("logoutRequested", handleLogoutRequested)
+    }
   }, [])
 
   // Fonction de connexion avec l'API

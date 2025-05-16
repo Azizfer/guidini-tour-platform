@@ -1,16 +1,18 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
-import { Globe, Bell, MessageSquare, User, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { motion, AnimatePresence } from "framer-motion"
-import { useAuth } from "@/app/LogingContext/AuthContext"
+import { useAuth } from "@/app/LogingContext/AuthContext" // Using your provided AuthContext path
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import ProfilePopover from "./Profile-popover"
 import NotificationPopover from "./notification-popover"
 import MessagePopover from "./message-popover"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import GlobalLogoutConfirmation from "./LogoutConfirmation"
 
 // Define a user type that matches what ProfilePopover expects
 interface UserProfile {
@@ -23,7 +25,7 @@ interface UserProfile {
 }
 
 export default function Header() {
-  const [language, setLanguage] = useState("Français")
+  const [language, setLanguage] = useState("FR")
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const { isAuthenticated, user: authUser, logout } = useAuth()
@@ -31,7 +33,7 @@ export default function Header() {
   // Transform auth user to the format expected by our components
   const user: UserProfile = authUser
     ? {
-        id: authUser.id || "default-id",
+        id: authUser.id || authUser._id || "default-id",
         name: authUser.name || "Utilisateur",
         email: authUser.email || "",
         avatar: authUser.profileImage,
@@ -97,29 +99,26 @@ export default function Header() {
     e.stopPropagation()
     router.push("/auth/login")
   }
-  
+
   const navigateToRegister = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     router.push("/auth/register")
   }
 
-  // Handle logout
-  const handleLogout = () => {
-    logout()
-    setShowProfilePopover(false)
-  }
+  // This function is no longer needed as the logout is now handled by the LogoutConfirmation component
+  // We keep the reference for compatibility, but it's not directly used anymore
 
   if (!isMounted) {
     return (
       <header className="sticky top-0 z-50 w-full bg-white shadow-sm py-3">
-        <div className="container mx-auto px-0 flex items-center justify-between">
+        <div className="container mx-auto px-4 flex items-center justify-between">
           <Link href="/">
-            <div className="h-10 w-24 bg-gray-200/50 rounded animate-pulse" />
+            <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
           </Link>
           <div className="flex items-center gap-4">
-            <div className="h-8 w-20 bg-gray-200/50 rounded animate-pulse" />
-            <div className="h-8 w-8 bg-gray-200/50 rounded-full animate-pulse" />
+            <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+            <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
           </div>
         </div>
       </header>
@@ -127,198 +126,257 @@ export default function Header() {
   }
 
   return (
-    <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        isScrolled ? "bg-white/95 backdrop-blur-sm shadow-md py-2" : "bg-white shadow-sm py-4"
-      }`}
-    >
-      <div className="container mx-auto px-0 relative z-10">
-        <div className="w-full flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <div className="relative h-12 w-40">
-              <img src="/placeholder.svg?height=40&width=120&text=Guidini" alt="Guidini Logo" className="h-10" />
-            </div>
-          </Link>
+    <>
+      <GlobalLogoutConfirmation />
+      <header
+        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+          isScrolled ? "bg-white/95 backdrop-blur-sm shadow-md py-2" : "bg-white shadow-sm py-3"
+        }`}
+      >
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="w-full flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center">
+              <div className="relative h-8">
+                <img src="/placeholder.svg?height=32&width=100&text=Guidini" alt="Guidini Logo" className="h-8" />
+              </div>
+            </Link>
 
-          {/* Right side actions */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex items-center gap-2 md:gap-4"
-          >
-            {/* Language Selector */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1.5 rounded-full px-3 hover:bg-teal-50 hover:text-teal-600"
-                >
-                  <Globe className="h-4 w-4" />
-                  <span>{language}</span>
-                  <ChevronDown className="h-3 w-3 opacity-70" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40 p-0" align="end">
-                <div className="rounded-md overflow-hidden">
-                  <button
-                    onClick={() => setLanguage("Français")}
-                    className={`w-full text-left px-3 py-2 text-sm ${language === "Français" ? "bg-teal-50 text-teal-600 font-medium" : "hover:bg-gray-50"}`}
+            {/* Right side actions */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex items-center gap-3"
+            >
+              {/* Language Selector */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700"
                   >
-                    Français
-                  </button>
-                  <button
-                    onClick={() => setLanguage("English")}
-                    className={`w-full text-left px-3 py-2 text-sm ${language === "English" ? "bg-teal-50 text-teal-600 font-medium" : "hover:bg-gray-50"}`}
-                  >
-                    English
-                  </button>
-                  <button
-                    onClick={() => setLanguage("العربية")}
-                    className={`w-full text-left px-3 py-2 text-sm ${language === "العربية" ? "bg-teal-50 text-teal-600 font-medium" : "hover:bg-gray-50"}`}
-                  >
-                    العربية
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            {/* Auth Buttons or User Actions */}
-            {isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
-                {/* Message Icon with Popover */}
-                <div className="relative">
-                  <button
-                    ref={messageRef}
-                    onClick={() => {
-                      setShowMessagePopover(!showMessagePopover)
-                      setShowNotificationPopover(false)
-                      setShowProfilePopover(false)
-                    }}
-                    className="p-2 rounded-full hover:bg-teal-50 transition-colors relative group"
-                  >
-                    <MessageSquare className="h-5 w-5 text-gray-600 group-hover:text-teal-600 transition-colors" />
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                      3
-                    </span>
-                  </button>
-                  <AnimatePresence>
-                    {showMessagePopover && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute right-0 mt-2 z-50"
-                      >
-                        <MessagePopover
-                          onOpenChat={(user) => {
-                            console.log("Opening chat with", user.name)
-                            setShowMessagePopover(false)
-                          }}
-                          onViewAllMessages={() => {
-                            console.log("Viewing all messages")
-                            router.push("/messages")
-                            setShowMessagePopover(false)
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Notification Icon with Popover */}
-                <div className="relative">
-                  <button
-                    ref={notificationRef}
-                    onClick={() => {
-                      setShowNotificationPopover(!showNotificationPopover)
-                      setShowMessagePopover(false)
-                      setShowProfilePopover(false)
-                    }}
-                    className="p-2 rounded-full hover:bg-teal-50 transition-colors relative group"
-                  >
-                    <Bell className="h-5 w-5 text-gray-600 group-hover:text-teal-600 transition-colors" />
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                      2
-                    </span>
-                  </button>
-                  <AnimatePresence>
-                    {showNotificationPopover && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute right-0 mt-2 z-50"
-                      >
-                        <NotificationPopover />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Profile Icon with Popover */}
-                <div className="relative">
-                  <button
-                    ref={profileRef}
-                    onClick={() => {
-                      setShowProfilePopover(!showProfilePopover)
-                      setShowNotificationPopover(false)
-                      setShowMessagePopover(false)
-                    }}
-                    className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 hover:from-teal-200 hover:to-teal-300 transition-all duration-300 overflow-hidden border border-teal-200 shadow-sm"
-                  >
-                    {user.avatar ? (
-                      <img
-                        src={user.avatar || "/placeholder.svg"}
-                        alt={user.name}
-                        className="h-full w-full object-cover"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="size-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"
                       />
-                    ) : (
-                      <User className="h-5 w-5 text-teal-700" />
-                    )}
-                  </button>
-                  <AnimatePresence>
-                    {showProfilePopover && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute right-0 mt-2 z-50"
+                    </svg>
+                    <span className="absolute -bottom-1 -right-1 text-[10px] font-medium text-gray-700 bg-gray-200 rounded-full px-1 min-w-5 text-center">
+                      {language}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-0" align="end">
+                  <div className="rounded-md overflow-hidden">
+                    <button
+                      onClick={() => setLanguage("FR")}
+                      className={`w-full text-left px-3 py-2 text-sm ${language === "FR" ? "bg-gray-100 text-gray-900 font-medium" : "hover:bg-gray-50"}`}
+                    >
+                      Français
+                    </button>
+                    <button
+                      onClick={() => setLanguage("EN")}
+                      className={`w-full text-left px-3 py-2 text-sm ${language === "EN" ? "bg-gray-100 text-gray-900 font-medium" : "hover:bg-gray-50"}`}
+                    >
+                      English
+                    </button>
+                    <button
+                      onClick={() => setLanguage("AR")}
+                      className={`w-full text-left px-3 py-2 text-sm ${language === "AR" ? "bg-gray-100 text-gray-900 font-medium" : "hover:bg-gray-50"}`}
+                    >
+                      العربية
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Auth Buttons or User Actions */}
+              {isAuthenticated && user ? (
+                <div className="flex items-center gap-3">
+                  {/* Message Icon with Popover */}
+                  <div className="relative">
+                    <button
+                      ref={messageRef}
+                      onClick={() => {
+                        setShowMessagePopover(!showMessagePopover)
+                        setShowNotificationPopover(false)
+                        setShowProfilePopover(false)
+                      }}
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors relative group"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="size-5 text-gray-700"
                       >
-                        <ProfilePopover user={user} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                        />
+                      </svg>
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                        3
+                      </span>
+                    </button>
+                    <AnimatePresence>
+                      {showMessagePopover && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute right-0 mt-2 z-50"
+                        >
+                          <MessagePopover
+                            onOpenChat={(user) => {
+                              console.log("Opening chat with", user.name)
+                              setShowMessagePopover(false)
+                            }}
+                            onViewAllMessages={() => {
+                              console.log("Viewing all messages")
+                              router.push("/messages")
+                              setShowMessagePopover(false)
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Notification Icon with Popover */}
+                  <div className="relative">
+                    <button
+                      ref={notificationRef}
+                      onClick={() => {
+                        setShowNotificationPopover(!showNotificationPopover)
+                        setShowMessagePopover(false)
+                        setShowProfilePopover(false)
+                      }}
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors relative group"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="size-5 text-gray-700"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                        />
+                      </svg>
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                        2
+                      </span>
+                    </button>
+                    <AnimatePresence>
+                      {showNotificationPopover && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute right-0 mt-2 z-50"
+                        >
+                          <NotificationPopover />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Profile Icon with Popover */}
+                  <div className="relative">
+                    <button
+                      ref={profileRef}
+                      onClick={() => {
+                        setShowProfilePopover(!showProfilePopover)
+                        setShowNotificationPopover(false)
+                        setShowMessagePopover(false)
+                      }}
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 overflow-hidden border border-gray-200"
+                    >
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar || "/placeholder.svg"}
+                          alt={user.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="size-5 text-gray-700"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                          />
+                        </svg>
+                      )}
+                      <span className="absolute -top-1 -right-1 bg-lime-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                        1
+                      </span>
+                    </button>
+                    <AnimatePresence>
+                      {showProfilePopover && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute right-0 mt-2 z-50"
+                        >
+                          <ProfilePopover user={user} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => navigateToLogin(e)}
-                  className="rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-all duration-300"
-                >
-                  Se connecter
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={(e) => navigateToRegister(e)}
-                  className="bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white transition-all duration-300 shadow hover:shadow-md rounded-full px-4 py-2 text-sm font-medium border border-teal-400/50"
-                >
-                  S'inscrire
-                </Button>
-              </div>
-            )}
-          </motion.div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => navigateToLogin(e)}
+                    className="rounded-full px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all duration-300"
+                  >
+                    Se connecter
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={(e) => navigateToRegister(e)}
+                    className="bg-gray-900 hover:bg-gray-800 text-white transition-all duration-300 shadow hover:shadow-md rounded-full px-4 py-1.5 text-sm font-medium"
+                  >
+                    S'inscrire
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   )
 }

@@ -10,6 +10,10 @@ interface GuideExpertiseStepProps {
   setExpertise: (expertise: string[]) => void
   languages: string[]
   setLanguages: (languages: string[]) => void
+  yearsOfExperience: number
+  setYearsOfExperience: (years: number) => void
+  description: string
+  setDescription: (description: string) => void
   onNext: () => void
   onPrev: () => void
 }
@@ -44,6 +48,10 @@ export default function GuideExpertiseStep({
   setExpertise,
   languages,
   setLanguages,
+  yearsOfExperience,
+  setYearsOfExperience,
+  description,
+  setDescription,
   onNext,
   onPrev,
 }: GuideExpertiseStepProps) {
@@ -144,6 +152,31 @@ export default function GuideExpertiseStep({
               )
             })}
           </motion.div>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium text-gray-800">Années d'expérience</h2>
+          <div className="flex items-center">
+            <input
+              type="number"
+              min="0"
+              max="50"
+              value={yearsOfExperience}
+              onChange={(e) => setYearsOfExperience(parseInt(e.target.value) || 0)}
+              className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+            <span className="ml-2 text-gray-600">ans</span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium text-gray-800">Description</h2>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Présentez-vous brièvement et décrivez votre expérience en tant que guide..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-32"
+          />
         </div>
 
         <div className="space-y-4">

@@ -3,15 +3,17 @@
 import { useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { Search, X, Mail } from "lucide-react"
+import { Search, X, MessageSquare, ArrowRight } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface Message {
   id: string
   sender: {
     name: string
     avatar?: string
+    online?: boolean
   }
   content: string
   time: string
@@ -29,6 +31,7 @@ const dummyMessages: Message[] = [
     sender: {
       name: "Ahmed",
       avatar: "/placeholder.svg?height=40&width=40&text=A",
+      online: true,
     },
     content: "Bonjour, je suis intéressé par votre visite guidée à Carthage.",
     time: "10:30",
@@ -39,6 +42,7 @@ const dummyMessages: Message[] = [
     sender: {
       name: "Sarah",
       avatar: "/placeholder.svg?height=40&width=40&text=S",
+      online: false,
     },
     content: "Est-ce que la visite de Sidi Bou Said est disponible demain?",
     time: "Hier",
@@ -49,6 +53,7 @@ const dummyMessages: Message[] = [
     sender: {
       name: "Mohamed",
       avatar: "/placeholder.svg?height=40&width=40&text=M",
+      online: true,
     },
     content: "Merci pour les informations sur Djerba!",
     time: "Lun",
@@ -59,6 +64,7 @@ const dummyMessages: Message[] = [
     sender: {
       name: "Leila",
       avatar: "/placeholder.svg?height=40&width=40&text=L",
+      online: false,
     },
     content: "Pouvez-vous me recommander un guide pour Kairouan?",
     time: "23/04",
@@ -92,14 +98,14 @@ export default function MessagePopover({ onOpenChat, onViewAllMessages }: Messag
   }
 
   return (
-    <div className="w-[400px] bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-teal-100">
+    <div className="w-[350px] bg-white rounded-lg shadow-xl overflow-hidden border border-gray-200 absolute right-0">
+      <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-gray-800 flex items-center gap-2">
-            <Mail className="h-4 w-4 text-teal-600" />
+            <MessageSquare className="h-4 w-4 text-gray-500" />
             Messages
             {unreadCount > 0 && (
-              <span className="bg-teal-500 text-white text-xs rounded-full px-2 py-0.5">{unreadCount}</span>
+              <span className="bg-gray-100 text-gray-800 text-xs rounded-full px-2 py-0.5">{unreadCount}</span>
             )}
           </h3>
         </div>
@@ -114,60 +120,87 @@ export default function MessagePopover({ onOpenChat, onViewAllMessages }: Messag
         </div>
       </div>
 
-      <ScrollArea className="max-h-[400px]">
+      <ScrollArea className="max-h-[350px]">
         {filteredMessages.length > 0 ? (
           <div className="p-2">
             {filteredMessages.map((message) => (
-              <div
+              <motion.div
                 key={message.id}
-                className={`p-3 mb-1 rounded-md hover:bg-gray-50 transition-colors relative cursor-pointer ${
-                  message.unread ? "bg-teal-50" : ""
-                }`}
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 1 }}
+                className={cn(
+                  "relative bg-white border rounded-lg p-3 mb-2 cursor-pointer",
+                  message.unread ? "border-gray-200 bg-gray-50" : "border-gray-100",
+                )}
                 onClick={() => handleMessageClick(message)}
               >
-                <div className="flex gap-3">
-                  <Avatar className="h-10 w-10 border border-gray-200">
-                    <AvatarImage src={message.sender.avatar || "/placeholder.svg"} alt={message.sender.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-teal-500 to-blue-500 text-white">
-                      {message.sender.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-10 w-10 shrink-0">
+                    <img
+                      src={message.sender.avatar || "/placeholder.svg"}
+                      alt={message.sender.name}
+                      className="rounded-full object-cover h-10 w-10"
+                    />
+                    {message.sender.online && (
+                      <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-white" />
+                    )}
+                  </div>
+
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium text-gray-800 truncate">{message.sender.name}</h4>
-                      <span className="text-xs text-gray-500 whitespace-nowrap ml-2">{message.time}</span>
+                    <div className="flex items-center justify-between">
+                      <p className={cn("text-sm font-medium", message.unread ? "text-gray-900" : "text-gray-700")}>
+                        {message.sender.name}
+                      </p>
+                      <span className="text-xs text-gray-400">{message.time}</span>
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-3">{message.content}</p>
+                    <p
+                      className={cn(
+                        "text-[13px] mt-0.5 line-clamp-2",
+                        message.unread ? "text-gray-700" : "text-gray-500",
+                      )}
+                    >
+                      {message.content}
+                    </p>
                   </div>
                 </div>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     deleteMessage(message.id)
                   }}
-                  className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                  className={cn(
+                    "absolute top-3 right-3 rounded-lg flex items-center justify-center h-6 w-6 p-0",
+                    "hover:bg-red-50 text-gray-400 hover:text-red-600",
+                    "transition-colors",
+                  )}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
-                {message.unread && <div className="absolute right-2 bottom-2 h-2 w-2 rounded-full bg-teal-500"></div>}
-              </div>
+
+                {message.unread && <div className="absolute bottom-3 right-3 h-2 w-2 rounded-full bg-blue-500" />}
+              </motion.div>
             ))}
           </div>
         ) : (
-          <div className="p-4 text-center text-gray-500">
-            <p>Aucun message trouvé</p>
+          <div className="p-8 text-center text-gray-500">
+            <div className="flex justify-center mb-2">
+              <MessageSquare className="h-6 w-6 text-gray-300" />
+            </div>
+            <p className="text-sm">Aucun message trouvé</p>
           </div>
         )}
       </ScrollArea>
 
-      <div className="p-3 border-t border-gray-200 text-center">
+      <div className="p-3 border-t border-gray-200">
         <Button
           variant="ghost"
           size="sm"
-          className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 w-full"
+          className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 w-full flex items-center justify-center gap-1 group"
           onClick={onViewAllMessages}
         >
-          Voir tous les messages
+          <span>Voir tous les messages</span>
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Button>
       </div>
     </div>

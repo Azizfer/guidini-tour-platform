@@ -121,7 +121,7 @@ export default function BasicInfoStep({
     reader.readAsDataURL(file)
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Reset all errors
     setError("")
     setNameError("")
@@ -159,6 +159,40 @@ export default function BasicInfoStep({
     if (hasError) {
       setError("Veuillez corriger les erreurs ci-dessous")
       return
+    }
+    
+    // Check if email already exists
+    try {
+      const response = await fetch('http://localhost:5001/api/auth/check-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.error && data.error.includes('email')) {
+          setEmailError("Cette adresse email est déjà utilisée")
+          setError("Veuillez utiliser une autre adresse email")
+          return;
+        }
+        
+        if (data.error && data.error.includes('nom')) {
+          setNameError("Ce nom d'utilisateur est déjà utilisé")
+          setError("Veuillez utiliser un autre nom d'utilisateur")
+          return;
+        }
+        
+        // Generic error
+        setError(data.error || "Une erreur est survenue lors de la vérification")
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+      // Continue anyway if the check fails - we'll validate again on final submission
     }
 
     onNext()
