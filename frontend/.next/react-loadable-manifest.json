@@ -7,8 +7,6 @@
   },
   "components\\sign-up-process.tsx -> @/services/authService": {
     "id": "components\\sign-up-process.tsx -> @/services/authService",
-    "files": [
-      "static/chunks/_app-pages-browser_src_services_authService_ts.js"
-    ]
+    "files": []
   }
 }

@@ -7,7 +7,7 @@ import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronDown, MapPin, Search } from "lucide-react"
+import { ChevronDown, MapPin, Search, X } from "lucide-react"
 import Link from "next/link"
 
 const pacifico = Pacifico({
@@ -182,47 +182,71 @@ export default function HeroTunisia() {
             animate="visible"
             className="flex flex-col items-center justify-center gap-6"
           >
+            <div className="w-full max-w-sm mb-2">
+              <AnimatePresence mode="wait">
+                {showSearch ? (
+                  <motion.div
+                    key="search-input"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="flex w-full gap-2 overflow-hidden"
+                  >
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        placeholder="Où voulez-vous aller?"
+                        className="bg-white/90 text-black placeholder:text-gray-500 border-none focus-visible:ring-blue-500 h-9 text-sm pr-9 w-full"
+                        autoFocus
+                      />
+                      <div className="absolute right-2 top-0 bottom-0 flex items-center justify-center">
+                        <motion.button 
+                          onClick={() => setShowSearch(false)}
+                          className="text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center justify-center p-0 m-0 bg-transparent border-none outline-none"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <X className="h-4 w-4" />
+                        </motion.button>
+                      </div>
+                    </div>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white border-none text-xs h-9">
+                      Rechercher
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="search-button"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <Button
+                      onClick={() => setShowSearch(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-xs rounded-full transition-all duration-300 shadow-md hover:shadow-lg w-full h-8"
+                    >
+                      <Search className="mr-2 h-4 w-4" />
+                      Rechercher
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
             <Button
               asChild
-              className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-xs rounded-full transition-all duration-300 shadow-md hover:shadow-lg w-full sm:w-auto h-8"
+              className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-xs rounded-full transition-all duration-300 shadow-md hover:shadow-lg w-full sm:w-auto h-8 mt-4"
             >
               <Link href="/carte-interactive/interactive-map">
                 <MapPin className="mr-2 h-4 w-4" />
                 Explorez la carte interactive
               </Link>
             </Button>
-
-            <div className="w-full max-w-sm">
-              <AnimatePresence>
-                {showSearch ? (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex w-full gap-2 overflow-hidden"
-                  >
-                    <Input
-                      type="text"
-                      placeholder="Où voulez-vous aller?"
-                      className="bg-white/90 text-black placeholder:text-gray-500 border-none focus-visible:ring-blue-500 h-9 text-sm"
-                      autoFocus
-                    />
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white border-none text-xs h-8">
-                      Rechercher
-                    </Button>
-                  </motion.div>
-                ) : (
-                  <Button
-                    onClick={() => setShowSearch(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-xs rounded-full transition-all duration-300 shadow-md hover:shadow-lg w-full h-8"
-                  >
-                    <Search className="mr-2 h-4 w-4" />
-                    Rechercher
-                  </Button>
-                )}
-              </AnimatePresence>
-            </div>
           </motion.div>
         </div>
       </div>

@@ -3,8 +3,8 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ChatButton from '@/components/Chatbot';
-import GuideProfileDashboard from './components/GuideProfileDashboard';
 import { ThemeProvider } from 'next-themes';
+import ProfileDashboard from './components/profile-dashboard';
 
 export default function ProfileGuide() {
   return (
@@ -12,7 +12,7 @@ export default function ProfileGuide() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1">
-          <GuideProfileDashboard /> 
+          <ProfileDashboard />
         </main>
         <Footer />
         <ChatButton />

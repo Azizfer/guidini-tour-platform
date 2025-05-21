@@ -13,6 +13,9 @@ export interface RegisterData {
   travelCompanions?: string[];
   budget?: string[];
   expertise?: string[];
+  coveredGovernorates?: string[];
+  yearsOfExperience?: number;
+  description?: string;
   profileImage?: File | null;
   idCard?: File | null;
   certificate?: File | null;
@@ -71,11 +74,46 @@ const createFormData = (data: RegisterData): FormData => {
 
 // Auth Service functions
 const authService = {
+  // Pre-register a user (send verification code)
+  preRegister: async (email: string, name: string): Promise<{ message: string; email: string }> => {
+    try {
+      const response = await axios.post<{ message: string; email: string }>(`${API_URL}/auth/pre-register`, {
+        email,
+        name
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Pre-registration error:', error);
+      throw error;
+    }
+  },
+  
+  // Verify registration code
+  verifyRegistration: async (email: string, otp: string): Promise<{ message: string; verificationToken: string }> => {
+    try {
+      const response = await axios.post<{ message: string; verificationToken: string }>(`${API_URL}/auth/verify-registration`, {
+        email,
+        otp
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Verification error:', error);
+      throw error;
+    }
+  },
+  
   // Register a new user
-  register: async (data: RegisterData): Promise<AuthResponse> => {
+  register: async (data: RegisterData, verificationToken?: string): Promise<AuthResponse> => {
     console.log('Sending registration data to API:', data);
     
     const formData = createFormData(data);
+    
+    // Add verification token if provided
+    if (verificationToken) {
+      formData.append('verificationToken', verificationToken);
+    }
     
     try {
       const response = await axios.post<AuthResponse>(`${API_URL}/auth/register`, formData, {

@@ -202,9 +202,9 @@ export default function BasicInfoStep({
     <div className="flex flex-col items-center">
       <div className="absolute top-4 left-4">
         <button
-          onClick={onBackToSignIn}
+          onClick={() => window.location.href = '/'}
           className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Retour"
+          aria-label="Retour à l'accueil"
         >
           <X className="h-5 w-5 text-gray-600" />
         </button>
@@ -283,7 +283,7 @@ export default function BasicInfoStep({
             <Input
               id="name"
               type="text"
-              placeholder="Ex: Jean Dupont"
+              placeholder=""
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={`w-full rounded-lg transition-all ${
@@ -291,6 +291,7 @@ export default function BasicInfoStep({
                   ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
                   : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
               } focus:ring-opacity-50`}
+              autoComplete="off"
             />
             {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
           </div>
@@ -305,7 +306,7 @@ export default function BasicInfoStep({
               <Input
                 id="email"
                 type="email"
-                placeholder="votre.email@exemple.com"
+                placeholder=""
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={`w-full pl-10 rounded-lg transition-all ${
@@ -313,6 +314,7 @@ export default function BasicInfoStep({
                     ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
                     : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
                 } focus:ring-opacity-50`}
+                autoComplete="off"
               />
             </div>
             {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
@@ -327,7 +329,7 @@ export default function BasicInfoStep({
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder=""
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={`w-full pr-10 rounded-lg transition-all ${
@@ -335,6 +337,7 @@ export default function BasicInfoStep({
                     ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
                     : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
                 } focus:ring-opacity-50`}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -360,10 +363,10 @@ export default function BasicInfoStep({
                   Force: <span className="font-medium">{strengthLabel}</span>
                 </p>
 
-                {/* Password Requirements */}
-                <div className="space-y-1.5 text-xs text-gray-500 pt-1">
+                {/* Password Requirements - Horizontal Layout */}
+                <div className="flex flex-wrap gap-3 text-xs text-gray-500 pt-1">
                   {passwordRequirements.map(({ label, test }) => (
-                    <div key={label} className="flex items-center gap-2">
+                    <div key={label} className="flex items-center gap-1">
                       {test(password) ? (
                         <Check className="w-3.5 h-3.5 text-green-500" />
                       ) : (

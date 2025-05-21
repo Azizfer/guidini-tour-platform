@@ -2,92 +2,66 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
-import { Star, Award, MessageCircle, ChevronLeft, ChevronRight, Calendar, Languages, MapPin, Mail } from "lucide-react"
+import { Award, ChevronLeft, ChevronRight, Languages, MapPin, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import SectionDivider from "@/components/section-divider"
 import Link from "next/link"
+import guideService, { Guide } from "@/services/guideService"
 
-const guides = [
-  {
-    id: 1,
-    name: "Ahmed",
-    specialty: "Histoire & Culture",
-    rating: 4.9,
-    reviews: 127,
-    image: "/placeholder.svg?height=400&width=400&text=Ahmed",
-    languages: ["Français", "Anglais", "Arabe"],
-    experience: "5 ans",
-    bio: "Passionné d'histoire tunisienne, Ahmed vous fera découvrir les trésors cachés de notre patrimoine culturel.",
-    location: "Tunis",
+// Interface pour les guides transformés pour l'affichage
+interface DisplayGuide {
+  id: string;
+  name: string;
+  specialty: string;
+  image: string;
+  languages: string[];
+  experience: string;
+  bio: string;
+  location: string;
+  availability: string;
+}
+
+// Fonction pour transformer les guides de l'API en format d'affichage
+const transformGuideData = (guide: Guide): DisplayGuide => {
+  // Déterminer la spécialité principale du guide
+  const specialty = guide.expertise && guide.expertise.length > 0 
+    ? guide.expertise[0] === "history" ? "Histoire & Culture" 
+    : guide.expertise[0] === "culture" ? "Culture & Traditions"
+    : guide.expertise[0] === "nature" ? "Nature & Randonnée"
+    : guide.expertise[0] === "gastronomy" ? "Gastronomie"
+    : guide.expertise[0] === "adventure" ? "Sports & Aventure"
+    : guide.expertise[0] === "art" ? "Art & Architecture"
+    : "Guide Touristique"
+    : "Guide Touristique";
+
+  // Déterminer la localisation principale du guide
+  const location = guide.coveredGovernorates && guide.coveredGovernorates.length > 0
+    ? guide.coveredGovernorates[0]
+    : "Tunisie";
+
+  return {
+    id: guide._id,
+    name: guide.name,
+    specialty,
+    image: guide.profileImage || `/placeholder.svg?height=400&width=400&text=${guide.name}`,
+    languages: guide.languages || ["Français"],
+    experience: `${guide.yearsOfExperience || 1} ans`,
+    bio: guide.description || "Guide touristique passionné par la Tunisie et sa culture.",
+    location,
     availability: "Disponible",
-    responseTime: "2h",
-  },
-  {
-    id: 2,
-    name: "Sarah",
-    specialty: "Gastronomie",
-    rating: 4.8,
-    reviews: 98,
-    image: "/placeholder.svg?height=400&width=400&text=Sarah",
-    languages: ["Français", "Anglais", "Italien"],
-    experience: "3 ans",
-    bio: "Experte en cuisine tunisienne, Sarah vous emmène dans un voyage culinaire à travers les saveurs locales.",
-    location: "Sousse",
-    availability: "Disponible",
-    responseTime: "1h",
-  },
-  {
-    id: 3,
-    name: "Mohamed",
-    specialty: "Aventure",
-    rating: 4.9,
-    reviews: 156,
-    image: "/placeholder.svg?height=400&width=400&text=Mohamed",
-    languages: ["Français", "Anglais", "Espagnol"],
-    experience: "7 ans",
-    bio: "Guide d'aventure expérimenté, Mohamed connaît les meilleurs spots pour des expériences inoubliables.",
-    location: "Djerba",
-    availability: "Disponible",
-    responseTime: "3h",
-  },
-  {
-    id: 4,
-    name: "Leila",
-    specialty: "Art & Artisanat",
-    rating: 4.7,
-    reviews: 84,
-    image: "/placeholder.svg?height=400&width=400&text=Leila",
-    languages: ["Français", "Anglais", "Allemand"],
-    experience: "4 ans",
-    bio: "Artiste dans l'âme, Leila vous fait découvrir les ateliers d'artisans et les galeries d'art locales.",
-    location: "Sidi Bou Said",
-    availability: "Disponible",
-    responseTime: "4h",
-  },
-  {
-    id: 5,
-    name: "Karim",
-    specialty: "Plongée & Sports nautiques",
-    rating: 5.0,
-    reviews: 112,
-    image: "/placeholder.svg?height=400&width=400&text=Karim",
-    languages: ["Français", "Anglais", "Arabe"],
-    experience: "6 ans",
-    bio: "Instructeur de plongée certifié, Karim vous emmène explorer les fonds marins de la Méditerranée.",
-    location: "Tabarka",
-    availability: "Disponible",
-    responseTime: "2h",
-  },
-]
+  };
+};
 
 export default function PopularGuides() {
+  const [guides, setGuides] = useState<DisplayGuide[]>([])
   const [currentGuide, setCurrentGuide] = useState(0)
   const [direction, setDirection] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
+  const [loading, setLoading] = useState(true)
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
 
   // Scroll animation references
@@ -111,9 +85,44 @@ export default function PopularGuides() {
     setCurrentGuide((prev) => (prev - 1 + guides.length) % guides.length)
   }
 
+  // Récupérer les guides depuis l'API
+  useEffect(() => {
+    const fetchGuides = async () => {
+      try {
+        setLoading(true);
+        const apiGuides = await guideService.getAllGuides();
+        
+        // Transformer les données des guides pour l'affichage
+        const displayGuides = apiGuides.map(transformGuideData);
+        
+        setGuides(displayGuides);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des guides:", error);
+        // Utiliser des guides par défaut en cas d'erreur
+        setGuides([
+          {
+            id: "1",
+            name: "Guide par défaut",
+            specialty: "Guide Touristique",
+            image: "/placeholder.svg?height=400&width=400&text=Guide",
+            languages: ["Français"],
+            experience: "1 an",
+            bio: "Guide touristique passionné par la Tunisie et sa culture.",
+            location: "Tunisie",
+            availability: "Disponible",
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGuides();
+  }, []);
+
   // Rotation automatique des guides (pause on hover)
   useEffect(() => {
-    if (isHovering || !isAutoPlaying) return
+    if (isHovering || !isAutoPlaying || guides.length === 0) return
 
     autoPlayRef.current = setInterval(() => {
       nextGuide()
@@ -124,7 +133,7 @@ export default function PopularGuides() {
         clearInterval(autoPlayRef.current)
       }
     }
-  }, [isHovering, isAutoPlaying])
+  }, [isHovering, isAutoPlaying, guides.length])
 
   // Arrêter l'autoplay quand l'utilisateur interagit
   const handleUserInteraction = () => {
@@ -155,33 +164,15 @@ export default function PopularGuides() {
     },
   }
 
-  // Fonction pour générer les étoiles de notation
-  const renderRatingStars = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 >= 0.5
-    const stars = []
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<Star key={`full-${i}`} className="h-4 w-4 text-yellow-400 fill-yellow-400" />)
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <div key="half" className="relative">
-          <Star className="h-4 w-4 text-yellow-400" />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
-            <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-          </div>
-        </div>,
-      )
-    }
-
-    const emptyStars = 5 - stars.length
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Star key={`empty-${i}`} className="h-4 w-4 text-yellow-400" />)
-    }
-
-    return stars
+  // Afficher un message de chargement si les guides sont en cours de chargement
+  if (loading || guides.length === 0) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-3 text-slate-900 tracking-tight">Chargement des guides...</h2>
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -206,43 +197,45 @@ export default function PopularGuides() {
             </p>
           </motion.div>
 
-          <motion.div style={{ scale }} transition={{ duration: 0.5 }}>
+          <motion.div style={{ scale }} transition={{ duration: 0.5 }} className="relative max-w-5xl mx-auto">
+            {/* Left navigation button */}
+            <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 z-50">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  prevGuide()
+                  handleUserInteraction()
+                }}
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="sr-only">Précédent</span>
+              </Button>
+            </div>
+
+            {/* Right navigation button */}
+            <div className="absolute top-1/2 -right-16 transform -translate-y-1/2 z-50">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  nextGuide()
+                  handleUserInteraction()
+                }}
+              >
+                <ChevronRight className="h-5 w-5" />
+                <span className="sr-only">Suivant</span>
+              </Button>
+            </div>
+            
             <Card
-              className="relative max-w-5xl mx-auto overflow-hidden shadow-xl rounded-2xl border-none"
+              className="relative overflow-hidden shadow-xl rounded-2xl border-none"
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
             >
               <CardContent className="p-0">
-                {/* Contrôles de navigation */}
-                <div className="absolute top-1/2 left-6 transform -translate-y-1/2 z-10">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full bg-white/90 hover:bg-white shadow-lg text-slate-700 border-slate-200 h-12 w-12"
-                    onClick={() => {
-                      prevGuide()
-                      handleUserInteraction()
-                    }}
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                    <span className="sr-only">Précédent</span>
-                  </Button>
-                </div>
-
-                <div className="absolute top-1/2 right-6 transform -translate-y-1/2 z-10">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full bg-white/90 hover:bg-white shadow-lg text-slate-700 border-slate-200 h-12 w-12"
-                    onClick={() => {
-                      nextGuide()
-                      handleUserInteraction()
-                    }}
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                    <span className="sr-only">Suivant</span>
-                  </Button>
-                </div>
 
                 {/* Carousel de guides */}
                 <div className="relative h-[450px] md:h-[450px] overflow-hidden bg-gradient-to-r from-slate-50 to-white">
@@ -287,13 +280,9 @@ export default function PopularGuides() {
 
                             <div className="mt-4 flex justify-center">
                               <div className="flex items-center">
-                                <div className="flex mr-2">{renderRatingStars(guides[currentGuide].rating)}</div>
-                                <span className="text-slate-800 font-medium text-lg">
-                                  {guides[currentGuide].rating}
-                                  <span className="text-slate-500 ml-1 font-normal">
-                                    ({guides[currentGuide].reviews} avis)
-                                  </span>
-                                </span>
+                                <Badge className="bg-blue-100 text-blue-800 border-none px-3 py-1 text-sm font-medium">
+                                  {guides[currentGuide].specialty}
+                                </Badge>
                               </div>
                             </div>
                           </motion.div>
@@ -324,15 +313,7 @@ export default function PopularGuides() {
                                 <span className="text-base">{guides[currentGuide].experience}</span>
                               </div>
 
-                              <div className="flex items-center text-slate-700">
-                                <MessageCircle className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-base">Répond en {guides[currentGuide].responseTime}</span>
-                              </div>
-
-                              <div className="flex items-center text-slate-700">
-                                <Calendar className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-base">Réservation flexible</span>
-                              </div>
+                              {/* Les éléments "Répond en 2h" et "Réservation flexible" ont été supprimés car ces informations ne sont pas disponibles dans la base de données */}
                             </div>
 
                             <div>
@@ -354,12 +335,22 @@ export default function PopularGuides() {
                             </div>
 
                             <div className="mt-8 flex flex-wrap gap-3">
-                              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium">
+                              <Button 
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center"
+                                onClick={() => {
+                                  window.location.href = `/guides/${guides[currentGuide].id}/contact`;
+                                }}
+                              >
                                 Contacter
                                 <Mail className="ml-2 h-5 w-5" />
                               </Button>
 
-                              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium">
+                              <Button 
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center"
+                                onClick={() => {
+                                  window.location.href = `/guides/${guides[currentGuide].id}`;
+                                }}
+                              >
                                 Voir le profil
                                 <ChevronRight className="ml-2 h-5 w-5" />
                               </Button>
@@ -381,14 +372,14 @@ export default function PopularGuides() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex justify-center mt-12 fade-in"
           >
-            <Button
-              asChild
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300 inline-flex items-center"
+              onClick={() => {
+                window.location.href = '/guides';
+              }}
             >
-              <Link href="/guides" className="inline-flex items-center">
-                Voir tous les guides
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Link>
+              Voir tous les guides
+              <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           </motion.div>
         </div>

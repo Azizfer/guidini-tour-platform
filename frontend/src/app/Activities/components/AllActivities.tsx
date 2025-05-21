@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { useToursStore } from "@/services/toursService"
 import ActivityCard from "./activity-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import MatrixText from "./matrix-text"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import PaymentStatusChecker from "./payment-status-checker"
 
@@ -23,8 +22,6 @@ const staticActivities = [
       "Explorez les vestiges de l'ancienne cité punique et romaine avec un guide expert qui vous racontera l'histoire fascinante de ce site classé au patrimoine mondial de l'UNESCO.",
     duration: "3 heures",
     price: 45,
-    rating: 4.8,
-    reviewCount: 124,
     maxParticipants: 15,
     dates: ["2024-04-05"],
     category: "Histoire",
@@ -39,8 +36,6 @@ const staticActivities = [
       "Flânez dans les charmantes ruelles du village pittoresque de Sidi Bou Said, admirez l'architecture traditionnelle et profitez d'une vue imprenable sur la Méditerranée.",
     duration: "2 heures",
     price: 30,
-    rating: 4.9,
-    reviewCount: 89,
     maxParticipants: 10,
     dates: ["2024-04-02", "2024-04-04", "2024-04-06"],
     category: "Culture",
@@ -55,8 +50,6 @@ const staticActivities = [
       "Partez à l'aventure dans le désert du Sahara, dormez sous les étoiles dans un campement traditionnel et profitez d'une balade à dos de chameau au coucher du soleil.",
     duration: "2 jours",
     price: 150,
-    rating: 4.7,
-    reviewCount: 76,
     maxParticipants: 12,
     dates: ["2024-04-10", "2024-04-17", "2024-04-24"],
     category: "Aventure",
@@ -84,18 +77,17 @@ export default function AllActivities() {
   const tourActivities = tours
     .filter((tour) => tour.isPublic)
     .map((tour) => ({
-      id: tour.id || `tour-${Date.now()}`,
+      id: tour.id || `tour-${Math.random().toString(36).substring(2, 9)}`,
       title: tour.title,
       image: tour.image || "/placeholder.svg?height=200&width=300",
       description: tour.description,
       longDescription: tour.description,
       duration: tour.duration,
       price: tour.price,
-      rating: tour.rating || 4.5,
-      reviewCount: tour.reviewCount || 0,
+
       maxParticipants: tour.maxParticipants,
       dates: [tour.date],
-      category: tour.category || "Visite",
+      category: Array.isArray(tour.category) ? tour.category[0] : (tour.category || "Visite"),
       location: tour.location,
     }))
 
@@ -150,15 +142,7 @@ export default function AllActivities() {
       <PaymentStatusChecker />
       <div className="container mx-auto px-4 py-12">
         <div className="mb-12">
-          <MatrixText
-            text="Découvrez Nos Activités"
-            className="mb-4"
-            initialDelay={300}
-            letterAnimationDuration={600}
-            letterInterval={80}
-            loop={true}
-            loopInterval={8000}
-          />
+          <h1 className="text-3xl font-bold text-center mb-4">Découvrez Nos Activités</h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

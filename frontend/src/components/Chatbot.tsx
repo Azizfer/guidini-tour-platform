@@ -60,27 +60,102 @@ export default function Chatbot() {
     textarea.style.height = `${Math.min(scrollHeight, 200)}px`
   }
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
+  // Utilitaire de journalisation d'erreur sécurisée
+  const safeLogError = (message: string, error?: unknown) => {
+    try {
+      if (typeof console !== 'undefined' && console.error) {
+        const safeMessage = String(message).substring(0, 200);
+        if (error === undefined) {
+          console.error(safeMessage);
+        } else {
+          // Éviter les problèmes de sérialisation en extrayant seulement les propriétés importantes
+          let errorInfo = '';
+          if (typeof error === 'object' && error !== null) {
+            const errorObj = error as any;
+            errorInfo = `${errorObj.name || 'Error'}: ${errorObj.message || 'Unknown error'}`;
+            if (errorObj.stack) {
+              // Prendre seulement la première ligne de la stack trace
+              const stackFirstLine = errorObj.stack.split('\n')[0];
+              errorInfo += ` | ${stackFirstLine}`;
+            }
+          } else {
+            errorInfo = String(error);
+          }
+          console.error(safeMessage, errorInfo.substring(0, 200));
+        }
+      }
+    } catch (logError) {
+      // Solution de secours absolue si même la journalisation des erreurs échoue
+      if (typeof console !== 'undefined' && console.log) {
+        console.log('Échec de la journalisation correcte de l\'erreur');
+      }
+    }
+  };
 
-    if (!input.trim()) return
+  // Gestionnaire de réponse API amélioré
+  const handleApiResponse = async (response: Response): Promise<any> => {
+    try {
+      if (!response || !response.ok) {
+        let errorText = 'Erreur inconnue';
+        let statusCode = 500;
+
+        try {
+          statusCode = response?.status || 500;
+          errorText = await response.text();
+          
+          // Essayer de parser en JSON si possible
+          try {
+            const jsonError = JSON.parse(errorText);
+            errorText = jsonError.message || jsonError.error || errorText;
+          } catch {
+            // Pas du JSON, conserver le texte original
+          }
+        } catch (parseError) {
+          safeLogError('Échec de l\'analyse de la réponse d\'erreur', parseError);
+        }
+
+        // Assainir le message d'erreur
+        const safeErrorMessage = String(errorText)
+          .replace(/[^\x20-\x7E]/g, '')
+          .substring(0, 500);
+
+        safeLogError(`Erreur API ${statusCode}`, safeErrorMessage);
+        throw new Error(`Erreur API: ${safeErrorMessage}`);
+      }
+
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        safeLogError('Échec de l\'analyse de la réponse réussie', jsonError);
+        throw new Error('Format de réponse API invalide');
+      }
+    } catch (error) {
+      safeLogError('Erreur inattendue dans le traitement de l\'API', error);
+      throw new Error('Échec du traitement de la réponse API');
+    }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (!input.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input,
       role: "user",
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    adjustHeight(true)
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    adjustHeight(true);
+    setIsLoading(true);
 
     try {
-      console.log("Envoi de la requête au backend...")
-      // Pour le développement local, utilisez une URL relative pour éviter les problèmes CORS
-      const response = await fetch("/api/chat", {
+      console.log("Envoi de la requête au backend...");
+      // Utiliser l'URL complète du backend pour éviter les problèmes CORS
+      const response = await fetch("http://localhost:5001/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,44 +167,57 @@ export default function Chatbot() {
             content: msg.content,
           })),
         }),
-      })
+      });
 
-      console.log("Statut de la réponse:", response.status)
+      console.log("Statut de la réponse:", response.status);
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Erreur de réponse:", errorText)
-        throw new Error(`Erreur ${response.status}: ${errorText}`)
+      const data = await handleApiResponse(response);
+      console.log("Données reçues:", data);
+
+      // Vérifier si la réponse contient une erreur spécifique
+      if (data.error === "API_KEY_INVALID") {
+        throw new Error("API_KEY_INVALID");
       }
-
-      const data = await response.json()
-      console.log("Données reçues:", data)
-
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content:
           data.response || "Je n'ai pas pu générer une réponse appropriée. Pourriez-vous reformuler votre question ?",
         role: "assistant",
         timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      safeLogError("Erreur détaillée", error);
+
+      // Message d'erreur personnalisé en fonction du type d'erreur
+      let errorContent = "";
+
+      if (error.message === "API_KEY_INVALID" || 
+          (error.response && error.response.error === "SERVICE_DOWN") ||
+          (error.response && error.response.error === "SERVICE_UNAVAILABLE")) {
+        errorContent = "Le service de chat est temporairement indisponible. L'administrateur doit configurer une clé API Gemini valide.";
+        
+        // Afficher des instructions pour l'administrateur dans la console
+        console.info("Pour résoudre ce problème, vérifiez que la clé GEMINI_API_KEY dans le fichier .env du backend est valide.");
+        console.info("Vous pouvez obtenir une clé API Gemini sur https://ai.google.dev/");
+      } else if (error.message && error.message.includes("Failed to fetch")) {
+        errorContent = "Impossible de se connecter au serveur. Veuillez vérifier que le serveur backend est en cours d'exécution sur le port 5001.";
+      } else {
+        errorContent = "Je rencontre des difficultés techniques. Veuillez réessayer dans quelques instants.";
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (error: any) {
-      console.error("Erreur détaillée:", error)
-
-      // Message d'erreur plus informatif pour le débogage
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Désolé, je rencontre des difficultés techniques. Erreur: ${
-          error.message || "Inconnue"
-        }. Veuillez vérifier que le serveur backend est en cours d'exécution.`,
+        content: errorContent,
         role: "assistant",
         timestamp: new Date(),
-      }
+      };
 
-      setMessages((prev) => [...prev, errorMessage])
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -142,77 +230,85 @@ export default function Chatbot() {
 
   return (
     <>
-      {/* Chatbot container */}
-      <div className={`fixed bottom-4 right-4 z-50 flex flex-col items-end ${isOpen ? "w-[380px]" : "w-auto"}`}>
-        {/* Chatbot modal */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end space-y-3">
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="w-full overflow-hidden mb-3"
-              initial={{ opacity: 0, y: 20, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: "auto" }}
-              exit={{ opacity: 0, y: 20, height: 0 }}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ duration: 0.3 }}
-              style={{ maxHeight: "80vh" }}
+              className="w-full max-w-[380px] h-[500px] flex flex-col"
             >
-              <Card className="border-none shadow-xl rounded-[30px] overflow-hidden backdrop-blur-sm bg-white/95">
-                {/* Header */}
-                <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-3 flex flex-row items-center justify-between space-y-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">Guidini Assistant</h3>
+              <Card className="border border-gray-200 shadow-lg rounded-xl overflow-hidden h-full flex flex-col">
+                <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 py-2 px-4 text-white">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2">
+                      <div className="bg-white/20 rounded-full p-1">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="size-4.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="font-medium text-base">Guidini Assistant</h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsOpen(false)}
+                      className="text-white hover:bg-white/20 rounded-full h-7 w-7"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-full text-white hover:bg-white/20"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </CardHeader>
 
-                {/* Messages */}
-                <CardContent className="p-0">
-                  <div className="h-[350px] overflow-y-auto p-4 bg-gray-50/80">
-                    <div className="space-y-4">
+                <CardContent className="p-0 flex-grow">
+                  <div className="h-full overflow-y-auto">
+                    <div className="p-3 space-y-3">
                       {messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          {message.role === "assistant" && (
-                            <div className="w-2 h-2 mr-2 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 flex-shrink-0 mt-2"></div>
+                          className={cn(
+                            "flex",
+                            message.role === "user" ? "justify-end" : "justify-start"
                           )}
+                        >
                           <div
-                            className={`max-w-[80%] rounded-[18px] p-3 text-sm ${
+                            className={cn(
+                              "max-w-[85%] rounded-xl px-3 py-1",
                               message.role === "user"
-                                ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-tr-none shadow-md"
-                                : "bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-md"
-                            }`}
+                                ? "bg-teal-500 text-white rounded-tr-none"
+                                : "bg-gray-100 text-gray-800 rounded-tl-none"
+                            )}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <div className="text-xs">{message.content}</div>
                           </div>
                         </div>
                       ))}
                       {isLoading && (
                         <div className="flex justify-start">
-                          <div className="w-2 h-2 mr-2 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 flex-shrink-0 mt-2"></div>
-                          <div className="max-w-[80%] rounded-[18px] p-3 bg-white text-gray-800 border border-gray-100 rounded-tl-none shadow-md">
-                            <div className="flex items-center">
-                              <div className="flex space-x-1">
-                                <div
-                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
-                                  style={{ animationDelay: "0ms" }}
-                                ></div>
-                                <div
-                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
-                                  style={{ animationDelay: "150ms" }}
-                                ></div>
-                                <div
-                                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
-                                  style={{ animationDelay: "300ms" }}
-                                ></div>
-                              </div>
+                          <div className="max-w-[85%] rounded-xl px-3 py-1.5 bg-gray-100 text-gray-800 rounded-tl-none">
+                            <div className="flex items-center space-x-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"></div>
+                              <div
+                                className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"
+                                style={{ animationDelay: "150ms" }}
+                              ></div>
+                              <div
+                                className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"
+                                style={{ animationDelay: "300ms" }}
+                              ></div>
                             </div>
                           </div>
                         </div>
@@ -223,8 +319,8 @@ export default function Chatbot() {
                 </CardContent>
 
                 {/* Input */}
-                <CardFooter className="p-3 bg-white/90 border-t border-gray-100">
-                  <div className="w-full rounded-[20px] bg-black/5 p-1">
+                <CardFooter className="p-2 bg-white/90 border-t border-gray-100">
+                  <div className="w-full rounded-[16px] bg-black/5 p-1">
                     <div className="relative">
                       <Textarea
                         ref={textareaRef}
@@ -236,26 +332,26 @@ export default function Chatbot() {
                         onKeyDown={handleKeyDown}
                         placeholder="Tapez votre message..."
                         className={cn(
-                          "w-full rounded-[18px] pl-3 pr-10 placeholder:text-black/50 border-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-black resize-none text-wrap py-2.5 bg-transparent",
-                          "min-h-[45px] text-sm",
+                          "w-full rounded-[14px] pl-2.5 pr-8 placeholder:text-black/50 border-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-black resize-none text-wrap py-1.5 bg-transparent",
+                          "min-h-[36px] text-xs",
                         )}
                         disabled={isLoading}
                       />
 
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
                         <button
                           type="button"
                           onClick={handleSendMessage}
                           disabled={!input.trim() || isLoading}
                           className={cn(
-                            "rounded-full bg-gradient-to-r from-teal-500 to-teal-600 p-2 text-white shadow-md transition-all hover:shadow-lg",
+                            "rounded-full bg-gradient-to-r from-teal-500 to-teal-600 p-1.5 text-white shadow-sm transition-all hover:shadow-md",
                             (!input.trim() || isLoading) && "opacity-50",
                           )}
                         >
                           {isLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="w-3 h-3" />
                           )}
                         </button>
                       </div>
@@ -269,17 +365,17 @@ export default function Chatbot() {
 
         {/* Chatbot toggle button */}
         <motion.button
-          className={`rounded-full shadow-lg flex items-center justify-center ${
+          className={`rounded-full shadow-md flex items-center justify-center ${
             isOpen
-              ? "bg-red-500 hover:bg-red-600 w-12 h-12"
-              : "bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 w-14 h-14"
+              ? "bg-red-500 hover:bg-red-600 w-10 h-10"
+              : "bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 w-11 h-11"
           }`}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? (
-            <X className="h-5 w-5 text-white" />
+            <X className="h-4 w-4 text-white" />
           ) : (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -287,7 +383,7 @@ export default function Chatbot() {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
-              className="size-6 text-white"
+              className="size-5 text-white"
             >
               <path
                 strokeLinecap="round"

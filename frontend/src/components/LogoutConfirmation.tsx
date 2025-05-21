@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/app/LogingContext/AuthContext"
 import {
   AlertDialog,
@@ -13,9 +13,33 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// Create a custom event type for logout confirmation
+// Custom event names
+const OPEN_LOGOUT_EVENT = "openLogoutConfirmation"
+
+// Create a type for the callback function
+type LogoutCallback = () => void;
+
+// Create a global variable to store the callback
+// This avoids TypeScript errors with window properties
+let logoutCallbackFn: LogoutCallback | null = null;
+
+// Create a custom hook for logout confirmation
+export function useLogoutConfirmation() {
+  // Function to open the logout confirmation dialog with an optional callback
+  const open = useCallback((callback?: LogoutCallback) => {
+    // Store the callback if provided
+    if (callback) {
+      logoutCallbackFn = callback;
+    }
+    window.dispatchEvent(new CustomEvent(OPEN_LOGOUT_EVENT))
+  }, [])
+
+  return { open }
+}
+
+// For backward compatibility
 export const openLogoutConfirmation = () => {
-  window.dispatchEvent(new CustomEvent("openLogoutConfirmation"))
+  window.dispatchEvent(new CustomEvent(OPEN_LOGOUT_EVENT))
 }
 
 export default function GlobalLogoutConfirmation() {
@@ -28,15 +52,24 @@ export default function GlobalLogoutConfirmation() {
       setIsOpen(true)
     }
 
-    window.addEventListener("openLogoutConfirmation", handleOpenLogoutConfirmation)
+    window.addEventListener(OPEN_LOGOUT_EVENT, handleOpenLogoutConfirmation)
 
     return () => {
-      window.removeEventListener("openLogoutConfirmation", handleOpenLogoutConfirmation)
+      window.removeEventListener(OPEN_LOGOUT_EVENT, handleOpenLogoutConfirmation)
     }
   }, [])
 
   const handleLogout = () => {
+    // Execute the auth logout
     logout()
+    
+    // Execute the callback if it exists
+    if (logoutCallbackFn) {
+      logoutCallbackFn()
+      // Reset the callback after execution
+      logoutCallbackFn = null
+    }
+    
     setIsOpen(false)
   }
 

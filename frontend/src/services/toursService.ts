@@ -17,7 +17,7 @@ export interface Tour {
   isPublic: boolean;
   image?: string;
   bookings?: number;
-  category: string;
+  category: string | string[]; // Peut être une chaîne ou un tableau de chaînes
   guideId?: string;
   rating?: number;
   reviewCount?: number;

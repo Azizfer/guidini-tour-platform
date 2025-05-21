@@ -3,6 +3,7 @@ import React from 'react';
 import { AuthProvider } from "./LogingContext/AuthContext"; //Make sure the whole app has access to the context
 import ClientWrapper from '../components/ClientWrapper';
 import { ThemeProvider } from 'next-themes';
+import { Toaster } from "@/components/ui/toaster";
 
 
 export default function RootLayout({
@@ -17,6 +18,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <ClientWrapper />
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

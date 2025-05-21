@@ -12,7 +12,9 @@ import UserTypeStep from "./auth/steps/user-type-step"
 import TouristPreferencesStep from "./auth/steps/tourist-prefrences"
 import TouristTravelDetailsStep from "./auth/steps/tourist-travel-details-step"
 import GuideExpertiseStep from "./auth/steps/guide-expertise-step"
+import GuideLanguagesRegionsStep from "./auth/steps/guide-languages-regions-step"
 import GuideDocumentsStep from "./auth/steps/guide-documents-step"
+import EmailVerificationStep from "./auth/steps/email-verification-step"
 import SuccessStep from "./auth/steps/success-step"
 
 interface SignUpProcessProps {
@@ -25,7 +27,9 @@ export type SignUpStep =
   | "touristPreferences"
   | "touristTravelDetails"
   | "guideExpertise"
+  | "guideLanguagesRegions"
   | "guideDocuments"
+  | "emailVerification"
   | "success"
 
 export type UserType = "touriste" | "guide" | ""
@@ -49,17 +53,20 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   const [travelCompanions, setTravelCompanions] = useState<string[]>([])
   const [budget, setBudget] = useState<string[]>([])
   const [expertise, setExpertise] = useState<string[]>([])
+  const [coveredGovernorates, setCoveredGovernorates] = useState<string[]>([])
   const [yearsOfExperience, setYearsOfExperience] = useState<number>(0)
   const [description, setDescription] = useState<string>("")
   const [idCard, setIdCard] = useState<File | null>(null)
   const [certificate, setCertificate] = useState<File | null>(null)
   const [registrationError, setRegistrationError] = useState<string>("")
+  const [verificationToken, setVerificationToken] = useState<string>("")
+  const [isEmailSent, setIsEmailSent] = useState<boolean>(false)
 
   // Get steps based on user type
   const getSteps = () => {
     const commonSteps = ["basicInfo", "userType"]
-    const touristSteps = [...commonSteps, "touristPreferences", "touristTravelDetails", "success"]
-    const guideSteps = [...commonSteps, "guideExpertise", "guideDocuments", "success"]
+    const touristSteps = [...commonSteps, "touristPreferences", "touristTravelDetails", "emailVerification", "success"]
+    const guideSteps = [...commonSteps, "guideExpertise", "guideLanguagesRegions", "guideDocuments", "emailVerification", "success"]
 
     return userType === "touriste" ? touristSteps : userType === "guide" ? guideSteps : commonSteps
   }
@@ -197,12 +204,21 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                 <GuideExpertiseStep
                   expertise={expertise}
                   setExpertise={setExpertise}
-                  languages={languages}
-                  setLanguages={setLanguages}
                   yearsOfExperience={yearsOfExperience}
                   setYearsOfExperience={setYearsOfExperience}
                   description={description}
                   setDescription={setDescription}
+                  onNext={goToNext}
+                  onPrev={goToPrev}
+                />
+              )}
+
+              {currentStep === "guideLanguagesRegions" && (
+                <GuideLanguagesRegionsStep
+                  languages={languages}
+                  setLanguages={setLanguages}
+                  coveredGovernorates={coveredGovernorates}
+                  setCoveredGovernorates={setCoveredGovernorates}
                   onNext={goToNext}
                   onPrev={goToPrev}
                 />
@@ -214,7 +230,35 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                   setIdCard={setIdCard}
                   certificate={certificate}
                   setCertificate={setCertificate}
-                  onNext={goToNext}
+                  onNext={async () => {
+                    try {
+                      // Reset any previous errors
+                      setRegistrationError("");
+                      
+                      // Import auth service for pre-registration
+                      const authService = (await import('@/services/authService')).default;
+                      
+                      // Send pre-registration request
+                      await authService.preRegister(email, name);
+                      setIsEmailSent(true);
+                      goToNext();
+                    } catch (error: any) {
+                      console.error("Pre-registration error:", error);
+                      setRegistrationError(error.response?.data?.error || "Une erreur est survenue lors de l'envoi du code de vérification.");
+                    }
+                  }}
+                  onPrev={goToPrev}
+                />
+              )}
+
+              {currentStep === "emailVerification" && (
+                <EmailVerificationStep
+                  email={email}
+                  name={name}
+                  onVerificationSuccess={(token) => {
+                    setVerificationToken(token);
+                    goToNext();
+                  }}
                   onPrev={goToPrev}
                 />
               )}
@@ -242,6 +286,7 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                         budget,
                         // Guide specific fields
                         expertise,
+                        coveredGovernorates,
                         yearsOfExperience,
                         description,
                         idCard,
@@ -257,8 +302,8 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                       });
 
                       try {
-                        // Send registration data to API
-                        const response = await authService.register(registrationData);
+                        // Send registration data to API with verification token
+                        const response = await authService.register(registrationData, verificationToken);
                         console.log("Registration successful:", response);
                         
                         // Redirect to login page after short delay

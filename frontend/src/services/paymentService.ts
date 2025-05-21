@@ -4,6 +4,11 @@ import axios from 'axios';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 const API_URL = `${BACKEND_URL}/api/payments`;
 
+// Konnect sandbox API URL
+const KONNECT_API_URL = 'https://api.sandbox.konnect.network';
+// Konnect checkout URL
+const KONNECT_CHECKOUT_URL = 'https://konnect.network/pay';
+
 // Types for payment
 export interface PaymentInitialization {
   amount: number;
@@ -58,10 +63,11 @@ const getToken = (): string => {
 // Initialize a payment with Konnect
 export const initializePayment = async (paymentData: PaymentInitialization): Promise<PaymentResponse> => {
   try {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Sending payment request to:', `${API_URL}/initialize`);
-    }
+    // Log the request details for debugging
+    console.log('Sending payment request to:', `${API_URL}/initialize`);
+    console.log('Payment data:', JSON.stringify(paymentData, null, 2));
     
+    // Make the API call to initialize payment
     const response = await axios.post(`${API_URL}/initialize`, paymentData, {
       headers: {
         'Content-Type': 'application/json',
@@ -69,19 +75,65 @@ export const initializePayment = async (paymentData: PaymentInitialization): Pro
       }
     });
     
+    // Log the complete response for debugging
+    console.log('Complete payment response:', JSON.stringify(response.data, null, 2));
+    
     // Validate response structure
     const data = response.data as any;
-    if (!data || !data.payUrl || !data.paymentRef) {
+    if (!data) {
+      console.error('Empty response received');
       return {
         success: false,
         payUrl: '',
         paymentRef: '',
         orderId: paymentData.orderId || '',
-        message: 'Réponse invalide du serveur'
+        message: 'Réponse vide du serveur'
       };
     }
     
-    return data as PaymentResponse;
+    // Check if we have a payment reference
+    if (!data.paymentRef) {
+      console.error('No payment reference in response:', data);
+      return {
+        success: false,
+        payUrl: '',
+        paymentRef: '',
+        orderId: paymentData.orderId || '',
+        message: 'Référence de paiement manquante'
+      };
+    }
+    
+    // If we have a payment reference but no payUrl, construct one using the checkout URL
+    if (!data.payUrl && data.paymentRef) {
+      data.payUrl = `${KONNECT_CHECKOUT_URL}?paymentRef=${data.paymentRef}`;
+      console.log('Constructed payment URL:', data.payUrl);
+      data.success = true;
+    }
+    // If we have a payUrl but it's not a complete URL, fix it
+    else if (data.payUrl && !data.payUrl.startsWith('http')) {
+      if (data.payUrl.startsWith('/')) {
+        data.payUrl = `${KONNECT_API_URL}${data.payUrl}`;
+      } else {
+        data.payUrl = `${KONNECT_API_URL}/${data.payUrl}`;
+      }
+      console.log('Fixed payment URL:', data.payUrl);
+    }
+    
+    // Ensure success flag is set
+    if (data.payUrl && data.paymentRef) {
+      data.success = true;
+    }
+    
+    // Log the final payment URL
+    console.log('Final payment URL:', data.payUrl);
+    
+    return {
+      success: !!data.payUrl && !!data.paymentRef,
+      payUrl: data.payUrl || '',
+      paymentRef: data.paymentRef || '',
+      orderId: data.orderId || paymentData.orderId || '',
+      message: data.message
+    };
   } catch (error: any) {
     // Create a default error response
     const errorResponse: PaymentResponse = {
@@ -139,11 +191,31 @@ export const getPaymentStatus = async (paymentRef: string): Promise<PaymentStatu
     
     return response.data as PaymentStatus;
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Error checking payment status:', error);
-    }
+    console.log('Error checking payment status:', error);
     
-    throw new Error(error.response?.data?.message || 'Erreur lors de la vérification du statut du paiement');
+    // Instead of throwing an error, return a default payment status object
+    // This allows the UI to handle the error more gracefully
+    return {
+      success: false,
+      payment: {
+        id: '',
+        status: 'failed',
+        amountDue: 0,
+        reachedAmount: 0,
+        amount: 0,
+        token: '',
+        convertedAmount: 0,
+        exchangeRate: 0,
+        expirationDate: '',
+        shortId: '',
+        link: '',
+        orderId: paymentRef,
+        type: '',
+        details: error.response?.data?.message || 'Erreur lors de la vérification du statut du paiement',
+        acceptedPaymentMethods: [],
+        transactions: []
+      }
+    };
   }
 };
 

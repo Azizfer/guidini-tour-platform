@@ -143,13 +143,45 @@ export default function PopularDestinations() {
         </motion.div>
 
         <motion.div style={{ scale }} transition={{ duration: 0.5 }}>
-          <Card className="relative overflow-hidden max-w-5xl mx-auto border-none shadow-lg rounded-xl bg-white">
-            <CardContent className="p-0">
-              <div
-                className="relative h-[400px] md:h-[450px]"
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
+          <div className="relative max-w-5xl mx-auto">
+            {/* Navigation buttons */}
+            <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 z-40">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  prevDestination()
+                  handleUserInteraction()
+                }}
               >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="sr-only">Précédent</span>
+              </Button>
+            </div>
+
+            <div className="absolute top-1/2 -right-16 transform -translate-y-1/2 z-40">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  nextDestination()
+                  handleUserInteraction()
+                }}
+              >
+                <ChevronRight className="h-5 w-5" />
+                <span className="sr-only">Suivant</span>
+              </Button>
+            </div>
+
+            <Card className="overflow-hidden border-none shadow-lg rounded-none bg-white">
+              <CardContent className="p-0">
+                <div
+                  className="relative h-[400px] md:h-[450px]"
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                >
                 <AnimatePresence initial={false} custom={direction} mode="wait">
                   <motion.div
                     key={currentDestination}
@@ -222,17 +254,16 @@ export default function PopularDestinations() {
 
                           <div className="flex flex-wrap gap-2">
                             <Button
-                              asChild
                               size="sm"
-                              className="mt-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-300 text-xs h-8 px-3"
+                              onClick={() => {
+                                // Utiliser une navigation côté client pour une transition plus rapide
+                                const url = `/destinations/${destinations[currentDestination].id}`;
+                                window.location.href = url;
+                              }}
+                              className="mt-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-300 text-xs h-8 px-3 flex items-center"
                             >
-                              <Link
-                                href={`/destinations/${destinations[currentDestination].id}`}
-                                className="flex items-center"
-                              >
-                                Explorer cette destination
-                                <ChevronRight className="ml-1 h-3 w-3" />
-                              </Link>
+                              Explorer cette destination
+                              <ChevronRight className="ml-1 h-3 w-3" />
                             </Button>
                           </div>
                         </motion.div>
@@ -241,58 +272,29 @@ export default function PopularDestinations() {
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Navigation buttons */}
-                <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-40">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full bg-white/70 hover:bg-white shadow-lg text-slate-700 border-white/40 h-10 w-10 md:h-12 md:w-12"
-                    onClick={() => {
-                      prevDestination()
-                      handleUserInteraction()
-                    }}
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                    <span className="sr-only">Précédent</span>
-                  </Button>
-                </div>
-
-                <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-40">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full bg-white/70 hover:bg-white shadow-lg text-slate-700 border-white/40 h-10 w-10 md:h-12 md:w-12"
-                    onClick={() => {
-                      nextDestination()
-                      handleUserInteraction()
-                    }}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                    <span className="sr-only">Suivant</span>
-                  </Button>
-                </div>
-
-                {/* Indicateurs de navigation */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 z-30">
-                  {destinations.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setDirection(index > currentDestination ? 1 : -1)
-                        setCurrentDestination(index)
-                        handleUserInteraction()
-                      }}
-                      className={cn(
-                        "transition-all duration-300 h-1.5 rounded-full",
-                        currentDestination === index ? "bg-slate-800 w-6" : "bg-slate-300 hover:bg-slate-400 w-1.5",
-                      )}
-                      aria-label={`Voir destination ${index + 1}`}
-                    />
-                  ))}
-                </div>
               </div>
             </CardContent>
           </Card>
+            
+            {/* Indicateurs de navigation */}
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex space-x-2 z-30">
+              {destinations.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setDirection(index > currentDestination ? 1 : -1)
+                    setCurrentDestination(index)
+                    handleUserInteraction()
+                  }}
+                  className={cn(
+                    "transition-all duration-300 h-2 rounded-full",
+                    currentDestination === index ? "bg-slate-800 w-6" : "bg-slate-300 hover:bg-slate-400 w-2",
+                  )}
+                  aria-label={`Voir destination ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </motion.div>
 
         <motion.div

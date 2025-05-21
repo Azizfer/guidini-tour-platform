@@ -7,9 +7,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ChevronRight, X, Users, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { countryCodes } from "../data/countryCodes"
-import { StepOne, StepTwo, StepThree, SuccessMessage } from "./ReservationSteps"
-import { initializePayment } from "@/services/paymentService"
+import { StepOne, StepTwo, StepThree } from "./ReservationSteps"
 import { useAuth } from "@/app/LogingContext/AuthContext"
+import { KonnectPaymentButton } from "@/components/KonnectPaymentButton"
 
 interface ReservationPopoverProps {
   activity: {
@@ -51,7 +51,8 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
   })
   const [phoneError, setPhoneError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isComplete, setIsComplete] = useState(false)
+  // No longer using isComplete state since we're redirecting to Konnect
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [showCloseConfirmation, setShowCloseConfirmation] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
 
@@ -74,7 +75,8 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
         })
         setPhoneError("")
         setIsSubmitting(false)
-        setIsComplete(false)
+        // No longer using isComplete state
+        setIsRedirecting(false)
         setShowCloseConfirmation(false)
       }, 300)
     }
@@ -131,89 +133,44 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
     }
   }
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true)
-    setPaymentError(null)
-    
-    // Du00e9boguer les valeurs de l'activitu00e9
-    console.log('Activity details:', {
-      id: activity.id,
-      title: activity.title,
-      price: activity.price
-    })
-
-    try {
-      // Format data for Konnekt payment
-      const paymentData = {
-        tourId: String(activity.id || ''),
-        userId: user?.id || user?._id || 'dev-user-id', // Get user ID from auth context
-        firstName: formData.firstName || '',
-        lastName: formData.lastName || '',
-        email: formData.email || '',
-        phoneNumber: formData.countryCode && formData.phoneNumber ? 
-          `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, "")}` : '',
-        amount: (activity.price || 0) * (participants || 1),
-        description: `Ru00e9servation pour ${activity.title || 'activitu00e9'}`,
-        orderId: `tour-${activity.id || 'unknown'}-${Date.now()}`
-      }
-
-      console.log('Initializing payment with data:', {
-        ...paymentData,
-        amount: paymentData.amount,
-        tourId: paymentData.tourId,
-        userId: paymentData.userId
-      })
-
-      // Initialize payment with Konnekt
-      const response = await initializePayment(paymentData)
-      
-      console.log('Payment initialization response:', response)
-      
-      if (response.success && response.payUrl) {
-        // Store reservation data and payment reference in localStorage for retrieval after payment
-        const reservationData = {
-          ...paymentData,
-          date,
-          participants,
-          paymentRef: response.paymentRef || ''
-        }
-        
-        localStorage.setItem('pendingReservation', JSON.stringify(reservationData))
-        
-        // Notify parent component about the reservation
-        if (onReservationComplete) {
-          onReservationComplete(reservationData)
-        }
-        
-        console.log('Payment initialized successfully, redirecting to:', response.payUrl)
-        
-        // Redirect to Konnekt payment page
-        window.location.href = response.payUrl
-      } else {
-        setPaymentError(response.message || 'Une erreur est survenue lors de l\'initialisation du paiement. Veuillez réessayer.')
-        setIsSubmitting(false)
-      }
-      
-    } catch (error: any) {
-      console.error('Error processing payment:', error)
-      
-      // Handle different types of errors
-      if (error.response) {
-        // The request was made and the server responded with a status code outside 2xx range
-        console.error('Error response:', error.response.data)
-        setPaymentError(error.response.data?.message || 'Une erreur est survenue lors de l\'initialisation du paiement. Veuillez réessayer.')
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('No response received:', error.request)
-        setPaymentError('Aucune réponse du serveur. Vérifiez votre connexion internet et réessayez.')
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Error message:', error.message)
-        setPaymentError('Une erreur est survenue lors de l\'initialisation du paiement. Veuillez réessayer.')
-      }
-      
-      setIsSubmitting(false)
+  const handleSubmit = () => {
+    // Validate form data before proceeding
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phoneNumber) {
+      setPaymentError('Veuillez remplir tous les champs obligatoires');
+      return;
     }
+    
+    if (phoneError) {
+      setPaymentError(phoneError);
+      return;
+    }
+    
+    // Prepare payment data
+    const paymentData = {
+      tourId: String(activity.id || ''),
+      userId: user?.id || user?._id || 'dev-user-id',
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phoneNumber: formData.countryCode && formData.phoneNumber ? 
+        `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, "")}` : '',
+      amount: (activity.price || 0) * (participants || 1),
+      description: `Réservation pour ${activity.title || 'activité'}`,
+      orderId: `tour-${activity.id || 'unknown'}-${Date.now()}`
+    };
+    
+    // Store reservation data in localStorage for retrieval after payment
+    const reservationData = {
+      ...paymentData,
+      date,
+      participants
+    };
+    
+    localStorage.setItem('pendingReservation', JSON.stringify(reservationData));
+    
+    // Show the payment button (handled by the KonnectPaymentButton component)
+    setIsSubmitting(true);
+    setPaymentError(null);
   }
 
   // Handle confirmation dialog
@@ -226,7 +183,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
 
   // Handle close attempt
   const handleCloseAttempt = () => {
-    if (step > 1 && !isComplete) {
+    if (step > 1) {
       setShowCloseConfirmation(true)
     } else {
       setIsOpen(false)
@@ -236,7 +193,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
   // Handle open change
   const handleOpenChange = (open: boolean) => {
     // If trying to close and we're in the middle of the process (step > 1)
-    if (!open && step > 1 && !isComplete) {
+    if (!open && step > 1) {
       setShowCloseConfirmation(true)
       return // Don't close yet
     }
@@ -265,7 +222,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
     return () => {
       document.removeEventListener("keydown", handleEscapeKey)
     }
-  }, [isOpen, step, isComplete])
+  }, [isOpen, step])
 
   return (
     <AnimatePresence>
@@ -305,8 +262,23 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
               </button>
 
               <AnimatePresence mode="wait">
-                {isComplete ? (
-                  <SuccessMessage />
+                {isRedirecting ? (
+                  <motion.div
+                    key="redirecting"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="p-6 flex flex-col items-center text-center"
+                  >
+                    <div className="w-16 h-16 bg-gradient-to-r from-teal-500 to-blue-500 rounded-full flex items-center justify-center mb-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">Redirection vers Konnect</h3>
+                    <p className="text-gray-600 mb-4">
+                      Vous allez être redirigé vers la plateforme de paiement sécurisée Konnect...
+                    </p>
+                  </motion.div>
                 ) : (
                   <motion.div
                     key={`step-${step}`}
@@ -399,40 +371,35 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                             Suivant
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
+                        ) : isSubmitting ? (
+                          // When the form is submitted, show the KonnectPaymentButton
+                          <KonnectPaymentButton
+                            paymentData={{
+                              tourId: String(activity.id || ''),
+                              userId: user?.id || user?._id || 'dev-user-id',
+                              firstName: formData.firstName,
+                              lastName: formData.lastName,
+                              email: formData.email,
+                              phoneNumber: formData.countryCode && formData.phoneNumber ? 
+                                `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, "")}` : '',
+                              amount: (activity.price || 0) * (participants || 1),
+                              description: `Réservation pour ${activity.title || 'activité'}`,
+                              orderId: `tour-${activity.id || 'unknown'}-${Date.now()}`
+                            }}
+                            onError={(message) => {
+                              setPaymentError(message);
+                              setIsSubmitting(false);
+                            }}
+                            buttonText="Procéder au paiement"
+                            className="min-w-[150px]"
+                          />
                         ) : (
                           <Button
                             onClick={handleSubmit}
                             className="bg-teal-600 hover:bg-teal-700 min-w-[120px]"
-                            disabled={isSubmitting}
                             size="sm"
                           >
-                            {isSubmitting ? (
-                              <>
-                                <svg
-                                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  ></circle>
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  ></path>
-                                </svg>
-                                Traitement...
-                              </>
-                            ) : (
-                              "Réserver"
-                            )}
+                            Réserver maintenant
                           </Button>
                         )}
                       </div>

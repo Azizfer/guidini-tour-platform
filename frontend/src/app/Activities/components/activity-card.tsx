@@ -3,13 +3,13 @@
 import type React from "react"
 
 import { cn } from "@/lib/utils"
-import { Calendar, Clock, MapPin, Users, Star } from "lucide-react"
+import { Calendar, Clock, MapPin, Users } from "lucide-react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import PaymentCard from "./payment-card"
 
 export interface ActivityCardProps {
@@ -24,8 +24,6 @@ export interface ActivityCardProps {
     location: string
     dates: string[]
     category: string
-    rating?: number
-    reviewCount?: number
   }
   index: number
 }
@@ -88,20 +86,12 @@ export default function ActivityCard({ activity, index }: ActivityCardProps) {
             </div>
 
             <div className="absolute bottom-3 right-3">
-              <div className="px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-600 text-white backdrop-blur-md shadow-lg">
+              <div className="px-2.5 py-1 rounded-sm text-sm font-medium bg-white/90 dark:bg-zinc-900/90 text-zinc-900 dark:text-white backdrop-blur-sm border-l-2 border-blue-500 transition-all duration-300">
                 {formatPrice(activity.price)}
               </div>
             </div>
 
-            {activity.rating && (
-              <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-lg bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md">
-                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{activity.rating}</span>
-                {activity.reviewCount && (
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">({activity.reviewCount})</span>
-                )}
-              </div>
-            )}
+
           </div>
 
           <div className="flex-1 p-3.5 flex flex-col">
@@ -164,6 +154,7 @@ export default function ActivityCard({ activity, index }: ActivityCardProps) {
 
       <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
         <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden rounded-xl">
+          <DialogTitle className="sr-only">Réservation pour {activity.title}</DialogTitle>
           <PaymentCard
             activity={{
               title: activity.title,

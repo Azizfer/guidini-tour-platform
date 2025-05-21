@@ -36,11 +36,37 @@ export default function Header() {
         id: authUser.id || authUser._id || "default-id",
         name: authUser.name || "Utilisateur",
         email: authUser.email || "",
-        avatar: authUser.profileImage,
+        // Ensure the profile image URL is properly formatted
+        avatar: authUser.profileImage ? 
+          (authUser.profileImage.startsWith('http') ? 
+            authUser.profileImage : 
+            `http://localhost:5001${authUser.profileImage.startsWith('/') ? '' : '/'}${authUser.profileImage}`
+          ) : "",
         username: authUser.username || authUser.name || "user",
         userType: authUser.userType || "touriste",
       }
     : ({} as UserProfile)
+    
+  // Debug user data
+  useEffect(() => {
+    if (authUser) {
+      console.log("Auth user data:", authUser);
+      console.log("Profile image from auth:", authUser.profileImage);
+      console.log("User avatar after transformation:", user.avatar);
+      
+      // Check localStorage to see what's stored there
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("User from localStorage:", parsedUser);
+          console.log("Profile image from localStorage:", parsedUser.profileImage);
+        }
+      } catch (error) {
+        console.error("Error parsing user from localStorage:", error);
+      }
+    }
+  }, [authUser, user.avatar]);
   const router = useRouter()
 
   // Popover states
@@ -93,6 +119,15 @@ export default function Header() {
     }
   }, [])
 
+  // Prefetch important pages to reduce loading time
+  useEffect(() => {
+    // Prefetch common navigation targets
+    router.prefetch('/auth/login')
+    router.prefetch('/auth/register')
+    router.prefetch('/')
+    // Add other important routes as needed
+  }, [router])
+
   // Navigate to the auth pages
   const navigateToLogin = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -133,7 +168,7 @@ export default function Header() {
           isScrolled ? "bg-white/95 backdrop-blur-sm shadow-md py-2" : "bg-white shadow-sm py-3"
         }`}
       >
-        <div className="container mx-auto px-4 relative z-10">
+        <div className="w-full pl-4 pr-0 relative z-10">
           <div className="w-full flex items-center justify-between">
             {/* Logo */}
             <Link href="/" className="flex items-center">
@@ -147,7 +182,7 @@ export default function Header() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-3 ml-auto mr-4"
             >
               {/* Language Selector */}
               <Popover>
@@ -312,11 +347,15 @@ export default function Header() {
                       }}
                       className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 overflow-hidden border border-gray-200"
                     >
-                      {user.avatar ? (
+                      {user.avatar && user.avatar.trim() !== "" ? (
                         <img
-                          src={user.avatar || "/placeholder.svg"}
+                          src={user.avatar}
                           alt={user.name}
                           className="h-full w-full object-cover"
+                          onError={(e) => {
+                            console.log("Image failed to load:", user.avatar);
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
                         />
                       ) : (
                         <svg
@@ -334,9 +373,7 @@ export default function Header() {
                           />
                         </svg>
                       )}
-                      <span className="absolute -top-1 -right-1 bg-lime-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                        1
-                      </span>
+
                     </button>
                     <AnimatePresence>
                       {showProfilePopover && (

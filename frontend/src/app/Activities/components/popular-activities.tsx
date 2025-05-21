@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
-import { ChevronRight, ChevronLeft, Star, Calendar, Clock, Users } from "lucide-react"
+import { ChevronRight, ChevronLeft, Calendar, Clock, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,8 +22,6 @@ export default function PopularActivities() {
     description: string
     image: string
     tags: string[]
-    rating: number
-    reviews: number
     duration: string
     groupSize: string
     startTime: string
@@ -58,13 +56,11 @@ export default function PopularActivities() {
         name: tour.title,
         description: tour.description,
         image: tour.image || "/placeholder.svg?height=600&width=800&text=" + encodeURIComponent(tour.title),
-        tags: tour.category ? [tour.category] : ["Visite"],
-        rating: tour.rating || 4.5,
-        reviews: tour.reviewCount || 0,
+        tags: Array.isArray(tour.category) ? tour.category : (tour.category ? [tour.category] : ["Visite"]),
         duration: tour.duration || "3 heures",
         groupSize: `${tour.maxParticipants || 10} personnes`,
         startTime: tour.time || "Flexible",
-        price: typeof tour.price === "number" ? `${tour.price}€` : tour.price || "65€",
+        price: typeof tour.price === "number" ? `${tour.price} TND` : tour.price || "65 TND",
       }))
 
     // Si aucun tour public n'est disponible, utiliser des activités par défaut
@@ -79,12 +75,11 @@ export default function PopularActivities() {
                 "Découvrez la beauté naturelle des forêts tunisiennes avec une expérience de camping inoubliable au cœur de la nature",
               image: "/placeholder.svg?height=600&width=800&text=Camping+à+Ain+Drahem",
               tags: ["Nature", "Aventure", "Détente"],
-              rating: 4.8,
-              reviews: 124,
+
               duration: "2 jours",
               groupSize: "8 personnes",
               startTime: "9h00",
-              price: "120€",
+              price: "120 TND",
             },
             {
               id: "default2",
@@ -93,12 +88,11 @@ export default function PopularActivities() {
                 "Aventure inoubliable dans le Sahara tunisien avec balade à dos de chameau et nuit sous les étoiles",
               image: "/placeholder.svg?height=600&width=800&text=Excursion+dans+le+désert",
               tags: ["Aventure", "Nature", "Expérience"],
-              rating: 4.7,
-              reviews: 98,
+
               duration: "1 jour",
               groupSize: "12 personnes",
               startTime: "7h30",
-              price: "95€",
+              price: "95 TND",
             },
             {
               id: "default3",
@@ -112,7 +106,7 @@ export default function PopularActivities() {
               duration: "4 heures",
               groupSize: "6 personnes",
               startTime: "10h00",
-              price: "75€",
+              price: "85 TND",
             },
           ]
 
@@ -153,35 +147,6 @@ export default function PopularActivities() {
     if (autoPlayRef.current) {
       clearInterval(autoPlayRef.current)
     }
-  }
-
-  // Fonction pour générer les étoiles de notation
-  const renderRatingStars = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 >= 0.5
-    const stars = []
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<Star key={`full-${i}`} className="h-4 w-4 text-yellow-400 fill-yellow-400" />)
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <div key="half" className="relative">
-          <Star className="h-4 w-4 text-yellow-400" />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
-            <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-          </div>
-        </div>,
-      )
-    }
-
-    const emptyStars = 5 - stars.length
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Star key={`empty-${i}`} className="h-4 w-4 text-yellow-400" />)
-    }
-
-    return stars
   }
 
   // Animation variants
@@ -234,8 +199,40 @@ export default function PopularActivities() {
             </p>
           </motion.div>
 
-          <motion.div style={{ scale }} transition={{ duration: 0.5 }}>
-            <Card className="relative overflow-hidden max-w-5xl mx-auto border-none shadow-lg rounded-xl bg-white">
+          <motion.div style={{ scale }} transition={{ duration: 0.5 }} className="relative max-w-5xl mx-auto">
+            {/* Left navigation button */}
+            <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 z-50">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  prevActivity()
+                  handleUserInteraction()
+                }}
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="sr-only">Activité précédente</span>
+              </Button>
+            </div>
+
+            {/* Right navigation button */}
+            <div className="absolute top-1/2 -right-16 transform -translate-y-1/2 z-50">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
+                onClick={() => {
+                  nextActivity()
+                  handleUserInteraction()
+                }}
+              >
+                <ChevronRight className="h-5 w-5" />
+                <span className="sr-only">Activité suivante</span>
+              </Button>
+            </div>
+            
+            <Card className="overflow-hidden max-w-5xl mx-auto border-none shadow-lg rounded-xl bg-white">
               <CardContent className="p-0">
                 <div
                   className="relative h-[400px] md:h-[450px]"
@@ -276,10 +273,10 @@ export default function PopularActivities() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20"></div>
 
                         {/* Price tag */}
-                        <div className="absolute top-6 left-6 z-30">
-                          <Badge className="px-3 py-1.5 text-base font-semibold bg-white text-slate-900 shadow-md">
+                        <div className="absolute top-6 right-6 z-30">
+                          <div className="px-3 py-1.5 rounded-sm text-base font-medium bg-white/90 dark:bg-zinc-900/90 text-zinc-900 dark:text-white backdrop-blur-sm border-l-2 border-blue-500 transition-all duration-300">
                             {activities[currentActivity].price}
-                          </Badge>
+                          </div>
                         </div>
 
                         <div className="absolute bottom-0 left-0 p-8 md:p-10 w-full pl-20 pr-20 z-30">
@@ -307,15 +304,7 @@ export default function PopularActivities() {
                             </p>
 
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6">
-                              <div className="flex items-center">
-                                <div className="flex mr-1">{renderRatingStars(activities[currentActivity].rating)}</div>
-                                <span className="text-white font-medium">
-                                  {activities[currentActivity].rating}
-                                  <span className="text-white/70 ml-1 font-normal">
-                                    ({activities[currentActivity].reviews} avis)
-                                  </span>
-                                </span>
-                              </div>
+
 
                               <div className="flex items-center text-white/90">
                                 <Clock className="h-4 w-4 mr-1.5" />
@@ -333,10 +322,10 @@ export default function PopularActivities() {
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-3 mb-8">
                               <Button
                                 asChild
-                                className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 text-sm px-4 py-2"
+                                className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 text-sm px-4 py-2 mb-4"
                               >
                                 <Link href="/Activities">
                                   Explorer cette activité
@@ -350,39 +339,10 @@ export default function PopularActivities() {
                     </motion.div>
                   </AnimatePresence>
 
-                  {/* Navigation buttons */}
-                  <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-40">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        prevActivity()
-                        handleUserInteraction()
-                      }}
-                      className="rounded-full bg-white/70 hover:bg-white shadow-lg text-slate-700 border-white/40 h-10 w-10 md:h-12 md:w-12"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                      <span className="sr-only">Activité précédente</span>
-                    </Button>
-                  </div>
 
-                  <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-40">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        nextActivity()
-                        handleUserInteraction()
-                      }}
-                      className="rounded-full bg-white/70 hover:bg-white shadow-lg text-slate-700 border-white/40 h-10 w-10 md:h-12 md:w-12"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                      <span className="sr-only">Activité suivante</span>
-                    </Button>
-                  </div>
 
                   {/* Indicateurs de navigation */}
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 z-30">
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex space-x-2 z-30">
                     {activities.map((_, index) => (
                       <button
                         key={index}

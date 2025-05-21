@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { cn } from "@/lib/utils"
+import { initializePayment } from "@/services/paymentService"
 import { ArrowRight, Users, CreditCard, Loader2, User, Phone, Check } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import ParticipantCounter from "./participant-counter"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
-import MatrixText from "./matrix-text"
 
 interface PaymentCardProps {
   activity?: {
@@ -116,15 +116,7 @@ export default function PaymentCard({
 
       console.log("Initializing payment with data:", paymentData)
 
-      // For demo purposes, simulate a successful payment
-      // In a real app, you would use the initializePayment function
-      setTimeout(() => {
-        setIsLoading(false)
-        setStep(3)
-      }, 1500)
-
-      // Uncomment this for real payment processing
-      /*
+      // Utiliser la fonction initializePayment pour rediriger vers Konnect
       const response = await initializePayment(paymentData)
       
       if (response.success) {
@@ -139,9 +131,9 @@ export default function PaymentCard({
         localStorage.setItem('redirectAfterPayment', '/Activities')
         window.location.href = response.payUrl
       } else {
+        setIsLoading(false)
         setError(response.message || "Une erreur est survenue lors de l'initialisation du paiement. Veuillez réessayer.")
       }
-      */
     } catch (error: any) {
       console.error("Erreur de paiement:", error)
 
@@ -388,17 +380,6 @@ export default function PaymentCard({
                 </div>
               </div>
             </motion.div>
-
-            <div className="h-10 w-full mb-4">
-              <MatrixText
-                text="Paiement Réussi"
-                className="text-center"
-                initialDelay={300}
-                letterAnimationDuration={600}
-                letterInterval={80}
-                loop={true}
-              />
-            </div>
 
             <motion.div
               className="space-y-4 text-center w-full"
