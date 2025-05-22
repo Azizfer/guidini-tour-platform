@@ -315,7 +315,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                     <div className="p-5">
                       <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-teal-500 to-blue-500 text-white text-xs font-medium">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-medium">
                             {step}
                           </div>
                           <span className="ml-2 font-medium text-sm">
@@ -359,7 +359,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                       
                       <div className="pt-5 flex justify-between">
                         {step > 1 ? (
-                          <Button variant="outline" onClick={handlePrevStep} size="sm">
+                          <Button variant="outline" onClick={handlePrevStep} size="sm" className="border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20">
                             Retour
                           </Button>
                         ) : (
@@ -367,7 +367,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                         )}
 
                         {step < 3 ? (
-                          <Button onClick={handleNextStep} className="bg-teal-600 hover:bg-teal-700" size="sm">
+                          <Button onClick={handleNextStep} className="bg-blue-600 hover:bg-blue-700" size="sm">
                             Suivant
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
@@ -396,7 +396,7 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                         ) : (
                           <Button
                             onClick={handleSubmit}
-                            className="bg-teal-600 hover:bg-teal-700 min-w-[120px]"
+                            className="bg-blue-600 hover:bg-blue-700 min-w-[120px]"
                             size="sm"
                           >
                             Réserver maintenant

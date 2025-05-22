@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
+import PaymentVerification from "./payment-verification"
 
 // This component handles client-side only functionality
 export default function ClientWrapper() {
@@ -44,5 +45,5 @@ export default function ClientWrapper() {
     return null
   }
 
-  return null // This component doesn't render anything visible
+  return <PaymentVerification />
 }

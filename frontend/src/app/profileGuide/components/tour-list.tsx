@@ -11,7 +11,11 @@ import {
   EyeIcon, 
   EyeSlashIcon, 
   PencilIcon, 
-  TrashIcon 
+  TrashIcon,
+  CalendarIcon,
+  ClockIcon,
+  UsersIcon,
+  TagIcon
 } from "@heroicons/react/24/outline"
 import { Tour } from "@/services/toursService"
 import TourEditForm from "./tour-edit-form"
@@ -121,6 +125,19 @@ function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog }: TourCa
   
   return (
     <Card className="overflow-hidden flex flex-col h-full">
+      {tour.image && (
+        <div className="relative w-full h-40 overflow-hidden">
+          <img 
+            src={tour.image.startsWith('/') || tour.image.startsWith('http') ? tour.image : `/uploads/${tour.image}`} 
+            alt={tour.title} 
+            className="w-full h-full object-cover" 
+            onError={(e) => {
+              // Fallback en cas d'erreur de chargement de l'image
+              e.currentTarget.src = '/placeholder-tour.jpg';
+            }}
+          />
+        </div>
+      )}
       <CardHeader className="pb-2 flex-grow-0">
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl font-bold text-slate-900">{tour.title}</CardTitle>
@@ -173,10 +190,34 @@ function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog }: TourCa
           {tour.location} • {tour.duration}
         </CardDescription>
       </CardHeader>
-      <CardContent className="py-2 flex-grow">
+      <CardContent className="py-2 flex-grow space-y-3">
         <p className="text-slate-700 line-clamp-3">{tour.description}</p>
+        
+        <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+          {/* Date et heure */}
+          <div className="flex items-center gap-1.5">
+            <CalendarIcon className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-700">{tour.date}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ClockIcon className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-700">{tour.time}</span>
+          </div>
+          
+          {/* Participants */}
+          <div className="flex items-center gap-1.5">
+            <UsersIcon className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-700">Max: {tour.maxParticipants} pers.</span>
+          </div>
+          
+          {/* Catégorie */}
+          <div className="flex items-center gap-1.5">
+            <TagIcon className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-700">{Array.isArray(tour.category) ? tour.category[0] : tour.category}</span>
+          </div>
+        </div>
       </CardContent>
-      <CardFooter className="pt-2 flex-grow-0 flex justify-between items-center">
+      <CardFooter className="pt-2 flex-grow-0 flex justify-between items-center border-t border-slate-100">
         <div className="text-slate-900 font-semibold">{tour.price} TND</div>
         <div className="flex items-center gap-1">
           <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${

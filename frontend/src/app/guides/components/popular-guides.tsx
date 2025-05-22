@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import SectionDivider from "@/components/section-divider"
 import Link from "next/link"
 import guideService, { Guide } from "@/services/guideService"
+import { useChat } from "@/contexts/chat-context"
 
 // Interface pour les guides transformés pour l'affichage
 interface DisplayGuide {
@@ -63,6 +64,9 @@ export default function PopularGuides() {
   const [isHovering, setIsHovering] = useState(false)
   const [loading, setLoading] = useState(true)
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Get the chat context
+  const { openChat, refreshConversations } = useChat()
 
   // Scroll animation references
   const sectionRef = useRef(null)
@@ -90,12 +94,32 @@ export default function PopularGuides() {
     const fetchGuides = async () => {
       try {
         setLoading(true);
+        console.log('Fetching guides from API...');
         const apiGuides = await guideService.getAllGuides();
+        console.log('Guides fetched:', apiGuides);
         
-        // Transformer les données des guides pour l'affichage
-        const displayGuides = apiGuides.map(transformGuideData);
-        
-        setGuides(displayGuides);
+        if (apiGuides && apiGuides.length > 0) {
+          // Transformer les données des guides pour l'affichage
+          const displayGuides = apiGuides.map(transformGuideData);
+          console.log('Transformed guides:', displayGuides);
+          setGuides(displayGuides);
+        } else {
+          console.warn('No guides returned from API');
+          // Utiliser des guides par défaut en cas d'absence de données
+          setGuides([
+            {
+              id: "1",
+              name: "Guide par défaut",
+              specialty: "Guide Touristique",
+              image: "/placeholder.svg?height=400&width=400&text=Guide",
+              languages: ["Français"],
+              experience: "1 an",
+              bio: "Guide touristique passionné par la Tunisie et sa culture.",
+              location: "Tunisie",
+              availability: "Disponible",
+            }
+          ]);
+        }
       } catch (error) {
         console.error("Erreur lors de la récupération des guides:", error);
         // Utiliser des guides par défaut en cas d'erreur
@@ -338,7 +362,40 @@ export default function PopularGuides() {
                               <Button 
                                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center"
                                 onClick={() => {
-                                  window.location.href = `/guides/${guides[currentGuide].id}/contact`;
+                                  // Fonction pour démarrer une conversation avec un guide
+                                  const handleContactGuide = (guide: DisplayGuide) => {
+                                    try {
+                                      // Refresh conversations first to ensure we have the latest data
+                                      refreshConversations().then(() => {
+                                        // Ouvrir le chat avec le guide sélectionné
+                                        openChat({
+                                          id: guide.id,
+                                          name: guide.name,
+                                          avatar: guide.image,
+                                          online: true
+                                        });
+                                      }).catch(error => {
+                                        console.error('Error refreshing conversations:', error);
+                                        // Still try to open chat even if refresh fails
+                                        openChat({
+                                          id: guide.id,
+                                          name: guide.name,
+                                          avatar: guide.image,
+                                          online: true
+                                        });
+                                      });
+                                    } catch (error) {
+                                      console.error('Error contacting guide:', error);
+                                      // Fallback - open chat directly
+                                      openChat({
+                                        id: guide.id,
+                                        name: guide.name,
+                                        avatar: guide.image,
+                                        online: true
+                                      });
+                                    }
+                                  }
+                                  handleContactGuide(guides[currentGuide]);
                                 }}
                               >
                                 Contacter

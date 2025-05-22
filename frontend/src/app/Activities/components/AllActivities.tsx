@@ -84,11 +84,11 @@ export default function AllActivities() {
       longDescription: tour.description,
       duration: tour.duration,
       price: tour.price,
-
       maxParticipants: tour.maxParticipants,
       dates: [tour.date],
       category: Array.isArray(tour.category) ? tour.category[0] : (tour.category || "Visite"),
       location: tour.location,
+      guideId: tour.guideId, // Add the guideId to the activity data
     }))
 
   // Combiner les activités statiques et les tours
@@ -173,7 +173,7 @@ export default function AllActivities() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap">
+              <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20">
                 <Filter className="w-4 h-4" />
                 Trier par
                 <ChevronDown className="w-4 h-4" />
@@ -220,7 +220,7 @@ export default function AllActivities() {
                 <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
                   Essayez de modifier vos critères de recherche ou de réinitialiser les filtres.
                 </p>
-                <Button variant="outline" onClick={resetFilters} className="mt-4">
+                <Button variant="outline" onClick={resetFilters} className="mt-4 border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20">
                   Réinitialiser les filtres
                 </Button>
               </motion.div>
@@ -250,7 +250,7 @@ export default function AllActivities() {
                     <Button
                       onClick={loadMore}
                       variant="outline"
-                      className="border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      className="border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
                     >
                       Afficher plus d'activités
                     </Button>

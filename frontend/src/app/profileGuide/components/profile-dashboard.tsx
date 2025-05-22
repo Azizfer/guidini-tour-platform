@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -25,29 +25,130 @@ import ToursManagement from "./tours-management";
 import GuideGallery from "./guide-gallery";
 import GuideReservations from "./guide-reservations";
 import Help from "./help";
+import guideService, { Guide } from "@/services/guideService";
+import preferenceService from "@/services/preferenceService";
+import { useAuth } from "@/app/LogingContext/AuthContext";
+
+interface EnhancedGuide extends Guide {
+  rating?: number;
+  reviewCount?: number;
+  toursCount?: number;
+  reservationsCount?: number;
+  unreadNotifications?: number;
+  unreadMessages?: number;
+  totalRevenue?: number;
+  touristsCount?: number;
+  paymentsReceived?: number;
+  experience?: number;
+  avatar?: string;
+  bio?: string;
+  website?: string;
+}
 
 export default function ProfileDashboard() {
   const [activeTab, setActiveTab] = useState<string>("dashboard")
+  const [guide, setGuide] = useState<EnhancedGuide | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  // Mock guide data
-  const guide = {
-    name: "Ahmed Ben Salah",
-    email: "ahmed@guidini.com",
-    avatar: "/placeholder.svg?height=100&width=100",
-    location: "Sousse, Tunisie",
-    bio: "Guide touristique professionnel avec 5 ans d'expérience mettant en valeur la beauté de la Tunisie",
-    rating: 4.8,
-    reviewCount: 124,
-    toursCount: 15,
-    reservationsCount: 8,
-    unreadNotifications: 3,
-    unreadMessages: 2,
-    totalRevenue: 2650,
-    touristsCount: 87,
-    paymentsReceived: 18,
-    languages: ["Français", "Anglais", "Arabe"],
-    experience: 5,
-    expertise: ["Histoire", "Culture", "Gastronomie"],
+  // Fonction pour récupérer les données du profil guide
+  const fetchGuideProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Utiliser l'ID de l'utilisateur connecté ou un ID par défaut pour le développement
+      const userId = user?.id || "682e10803651e668c119fbaf";
+      console.log("Fetching profile for user ID:", userId);
+      
+      // Fetch guide data from the API
+      console.log("Fetching guide data for user ID:", userId);
+      const guideData = await guideService.getGuideById(userId);
+      
+      // Fetch user preferences to get languages
+      let userLanguages: string[] = [];
+      try {
+        console.log("Fetching preferences for user ID:", userId);
+        const preferences = await preferenceService.getUserPreferences(userId);
+        userLanguages = preferences.languages || [];
+        console.log("User languages from preferences:", userLanguages);
+      } catch (prefError) {
+        console.error("Erreur lors de la récupération des préférences:", prefError);
+        // Use languages from guide data as fallback
+        userLanguages = guideData.languages || [];
+        console.log("Using languages from guide data as fallback:", userLanguages);
+      }
+      
+      // Transform the data to match our UI needs
+      const enhancedGuide: EnhancedGuide = {
+        ...guideData,
+        // Map backend fields to frontend expected fields
+        avatar: guideData.profileImage || "/placeholder.svg?height=100&width=100",
+        bio: guideData.description || "Aucune description disponible",
+        experience: guideData.yearsOfExperience || 0,
+        // Use languages from preferences
+        languages: userLanguages,
+        // Default values for stats that might not be in the API response
+        rating: 4.8, // TODO: Replace with real data when available
+        reviewCount: 0,
+        toursCount: 0,
+        reservationsCount: 0,
+        unreadNotifications: 0,
+        unreadMessages: 0,
+        totalRevenue: 0,
+        touristsCount: 0,
+        paymentsReceived: 0,
+        // Ne pas utiliser les gouvernorats couverts
+        location: guideData.location || "Tunisie"
+      };
+      
+      setGuide(enhancedGuide);
+    } catch (err) {
+      console.error("Erreur lors du chargement du profil:", err);
+      setError("Impossible de charger les données du profil. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Nous n'utilisons plus d'écouteurs d'événements personnalisés
+  // car nous rechargeons la page après les mises à jour
+  
+  // Charger les données du profil au chargement initial
+  useEffect(() => {
+    fetchGuideProfile();
+  }, [user]);
+  
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-white justify-center items-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement du profil...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state
+  if (error || !guide) {
+    return (
+      <div className="flex min-h-screen bg-white justify-center items-center">
+        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Erreur de chargement</h2>
+          <p className="text-gray-600 mb-4">{error || "Données du profil non disponibles"}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -111,7 +212,7 @@ export default function ProfileDashboard() {
               >
                 <ChatBubbleLeftRightIcon className="h-5 w-5" />
                 <span>Messages</span>
-                {guide.unreadMessages > 0 && (
+                {(guide.unreadMessages || 0) > 0 && (
                   <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs text-white">
                     {guide.unreadMessages}
                   </span>
@@ -150,13 +251,6 @@ export default function ProfileDashboard() {
           {activeTab === "gallery" && <GuideGallery />}
           {activeTab === "reservations" && <GuideReservations />}
           {activeTab === "help" && <Help />}
-
-          {activeTab === "messages" && (
-            <div className="space-y-6">
-              <h1 className="text-3xl font-bold text-slate-900">Messages</h1>
-              <p className="text-slate-600">Fonctionnalité de messagerie à venir...</p>
-            </div>
-          )}
         </div>
       </main>
     </div>

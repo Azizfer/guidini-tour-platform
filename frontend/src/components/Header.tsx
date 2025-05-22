@@ -11,8 +11,10 @@ import { useAuth } from "@/app/LogingContext/AuthContext" // Using your provided
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import ProfilePopover from "./Profile-popover"
 import NotificationPopover from "./notification-popover"
+import notificationService, { Notification as NotificationType } from "@/services/notificationService"
 import MessagePopover from "./message-popover"
 import GlobalLogoutConfirmation from "./LogoutConfirmation"
+import { useChat } from "@/contexts/chat-context"
 
 // Define a user type that matches what ProfilePopover expects
 interface UserProfile {
@@ -28,7 +30,10 @@ export default function Header() {
   const [language, setLanguage] = useState("FR")
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [notifications, setNotifications] = useState<NotificationType[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const { isAuthenticated, user: authUser, logout } = useAuth()
+  const { unreadCount: unreadMessageCount = 0 } = useChat()
 
   // Transform auth user to the format expected by our components
   const user: UserProfile = authUser
@@ -127,6 +132,35 @@ export default function Header() {
     router.prefetch('/')
     // Add other important routes as needed
   }, [router])
+  
+  // Fetch notifications periodically and update unread count
+  useEffect(() => {
+    // Only fetch notifications if user is authenticated
+    if (!isAuthenticated) return;
+    
+    const fetchNotifications = async () => {
+      try {
+        const fetchedNotifications = await notificationService.getUserNotifications();
+        setNotifications(fetchedNotifications);
+        // Calculate unread count
+        const unreadNotifications = fetchedNotifications.filter(notification => !notification.read);
+        setUnreadCount(unreadNotifications.length);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+    
+    // Initial fetch
+    fetchNotifications();
+    
+    // Set up periodic refresh (every 15 seconds)
+    const intervalId = setInterval(fetchNotifications, 15000);
+    
+    // Cleanup interval on unmount
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated])
 
   // Navigate to the auth pages
   const navigateToLogin = (e: React.MouseEvent) => {
@@ -263,9 +297,11 @@ export default function Header() {
                           d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
                         />
                       </svg>
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                        3
-                      </span>
+                      {unreadMessageCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                          {unreadMessageCount}
+                        </span>
+                      )}
                     </button>
                     <AnimatePresence>
                       {showMessagePopover && (
@@ -277,10 +313,6 @@ export default function Header() {
                           className="absolute right-0 mt-2 z-50"
                         >
                           <MessagePopover
-                            onOpenChat={(user) => {
-                              console.log("Opening chat with", user.name)
-                              setShowMessagePopover(false)
-                            }}
                             onViewAllMessages={() => {
                               console.log("Viewing all messages")
                               router.push("/messages")
@@ -317,9 +349,11 @@ export default function Header() {
                           d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
                         />
                       </svg>
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                        2
-                      </span>
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                          {unreadCount}
+                        </span>
+                      )}
                     </button>
                     <AnimatePresence>
                       {showNotificationPopover && (

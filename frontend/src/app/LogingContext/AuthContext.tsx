@@ -1,6 +1,7 @@
 "use client"
 import { createContext, useContext, useState, useEffect } from "react"
 import type React from "react"
+import { useRouter } from "next/navigation"
 
 import axios from "axios"
 
@@ -39,6 +40,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -318,6 +320,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Déclencher l'événement pour mettre à jour le Header
     window.dispatchEvent(new Event("authStateChanged"))
+    
+    // Rediriger vers la page d'accueil
+    router.push("/")
     
     // Déclencher un événement spécifique pour la déconnexion
     window.dispatchEvent(new Event("userLoggedOut"))

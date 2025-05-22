@@ -33,14 +33,14 @@ import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid"
 interface Guide {
   name: string
   email: string
-  avatar: string
-  location: string
-  bio: string
-  rating: number
-  reviewCount: number
-  languages: string[]
-  experience: number
-  expertise: string[]
+  avatar?: string
+  location?: string
+  bio?: string
+  rating?: number
+  reviewCount?: number
+  languages?: string[]
+  experience?: number
+  expertise?: string[]
 }
 
 interface ProfileAvatarProps {
@@ -52,11 +52,11 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
   const [formData, setFormData] = useState({
     name: guide.name,
     email: guide.email,
-    location: guide.location,
-    bio: guide.bio,
-    languages: guide.languages.join(", "),
-    experience: guide.experience,
-    expertise: guide.expertise.join(", "),
+    location: guide.location || "Tunisie",
+    bio: guide.bio || "",
+    languages: (guide.languages || []).join(", "),
+    experience: guide.experience || 0,
+    expertise: (guide.expertise || []).join(", "),
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

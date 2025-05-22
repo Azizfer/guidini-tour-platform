@@ -19,7 +19,10 @@ interface ChatBubbleProps {
 }
 
 export default function ChatBubble({ message, senderInfo }: ChatBubbleProps) {
+  // Ensure messages from the current user are always displayed on the right side
   const isUser = message.sender === "user";
+  
+  // Format the timestamp
   const formattedTime = new Intl.DateTimeFormat('fr-FR', {
     hour: '2-digit',
     minute: '2-digit'
@@ -32,38 +35,25 @@ export default function ChatBubble({ message, senderInfo }: ChatBubbleProps) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "flex w-full gap-2 mb-3",
-        isUser ? "flex-row-reverse" : "flex-row"
+        "flex w-full mb-3",
+        isUser ? "justify-end" : "justify-start"
       )}
     >
-      {/* Avatar */}
-      <div className="flex-shrink-0">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={senderInfo.avatar} alt={senderInfo.name} />
-          <AvatarFallback className={isUser ? "bg-blue-500" : "bg-teal-500 text-white"}>
-            {senderInfo.name.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        {senderInfo.online && (
-          <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white" />
-        )}
-      </div>
-
       {/* Message content */}
-      <div className="flex flex-col max-w-[80%]">
+      <div className="flex flex-col max-w-[75%]">
         <div
           className={cn(
-            "px-3 py-2 rounded-lg",
+            "px-3 py-2 rounded-2xl",
             isUser
-              ? "bg-blue-500 text-white rounded-tr-none"
-              : "bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-200 rounded-tl-none"
+              ? "bg-purple-600 text-white rounded-br-none" // Purple background for user messages
+              : "bg-gray-800 text-white rounded-bl-none" // Dark gray background for received messages
           )}
         >
           <p className="text-sm">{message.content}</p>
         </div>
         <span
           className={cn(
-            "text-xs mt-1 text-gray-500 dark:text-gray-400",
+            "text-xs mt-1 text-gray-500",
             isUser ? "text-right" : "text-left"
           )}
         >

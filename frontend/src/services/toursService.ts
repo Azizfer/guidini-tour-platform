@@ -1,7 +1,59 @@
 import axios from 'axios';
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 
-const API_URL = 'http://localhost:5001/api/tours';
+// Use environment variable if available, otherwise fallback to localhost
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api/tours` 
+  : 'http://localhost:5001/api/tours';
+
+// Fallback data for when the API is not available
+const fallbackTours = [
+  {
+    id: '1',
+    title: 'Visite guidée des ruines de Carthage',
+    description: 'Découvrez l\'histoire fascinante de l\'ancienne Carthage avec un guide expert.',
+    location: 'Carthage, Tunis',
+    duration: '3 heures',
+    price: 45,
+    maxParticipants: 15,
+    date: '2025-06-15',
+    time: '09:00',
+    isPublic: true,
+    image: '/images/carthage-ruins.jpg',
+    category: 'Histoire',
+    guideId: '101',
+  },
+  {
+    id: '2',
+    title: 'Balade dans les ruelles de Sidi Bou Said',
+    description: 'Flânez dans les charmantes ruelles du village pittoresque de Sidi Bou Said.',
+    location: 'Sidi Bou Said, Tunis',
+    duration: '2 heures',
+    price: 30,
+    maxParticipants: 10,
+    date: '2025-06-20',
+    time: '14:00',
+    isPublic: true,
+    image: '/images/sidi-bou-said.jpg',
+    category: 'Culture',
+    guideId: '102',
+  },
+  {
+    id: '3',
+    title: 'Excursion dans le désert du Sahara',
+    description: 'Partez à l\'aventure dans le désert du Sahara et profitez d\'une balade à dos de chameau.',
+    location: 'Sud Tunisien',
+    duration: '2 jours',
+    price: 150,
+    maxParticipants: 12,
+    date: '2025-07-10',
+    time: '08:00',
+    isPublic: true,
+    image: '/images/sahara.jpg',
+    category: 'Aventure',
+    guideId: '103',
+  }
+];
 
 export interface Tour {
   id?: string;
@@ -30,7 +82,9 @@ export const getAllTours = async (): Promise<Tour[]> => {
     return response.data;
   } catch (error) {
     console.log('Erreur lors de la récupération des tours:', error);
-    return [];
+    console.log('Utilisation des données de secours');
+    // Return fallback data when API is unavailable
+    return fallbackTours;
   }
 };
 

@@ -4,7 +4,8 @@ import type React from "react"
 
 import { cn } from "@/lib/utils"
 import { initializePayment } from "@/services/paymentService"
-import { ArrowRight, Users, CreditCard, Loader2, User, Phone, Check } from "lucide-react"
+import notificationService from "@/services/notificationService"
+import { ArrowRight, ArrowLeft, Users, CreditCard, Loader2, User, Phone, Check } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/app/LogingContext/AuthContext"
@@ -21,6 +22,7 @@ interface PaymentCardProps {
     date?: string
     maxParticipants?: number
     id: string | number
+    guideId?: string
   }
   onCheckout?: (participants: number) => void
   currency?: string
@@ -37,7 +39,7 @@ export default function PaymentCard({
   currency = "TND",
   onClose,
 }: PaymentCardProps) {
-  const [step, setStep] = useState(1) // Step 1: Select participants, Step 2: Enter details, Step 3: Success
+  const [step, setStep] = useState<1 | 2 | 3>(1) // Step 1: Select participants, Step 2: Enter details, Step 3: Success
   const [participants, setParticipants] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,10 +50,10 @@ export default function PaymentCard({
   const total = subtotal
 
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
+    fullName: user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || "",
     email: user?.email || "",
     phoneNumber: user?.phoneNumber || "",
+    countryCode: "+216", // Default to Tunisia country code
   })
 
   const formatPrice = (amount: number) => {
@@ -67,7 +69,7 @@ export default function PaymentCard({
     setParticipants(count)
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -89,7 +91,7 @@ export default function PaymentCard({
       setError(null)
 
       // Validate form data
-      if (!formData.firstName || !formData.lastName) {
+      if (!formData.fullName) {
         setError("Veuillez remplir votre nom et prénom")
         return
       }
@@ -99,14 +101,14 @@ export default function PaymentCard({
         return
       }
 
+
       // Initialize payment with Konnect
       const paymentData = {
         amount: total,
         description: `Réservation pour ${activity.title} - ${participants} personne(s)`,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        fullName: formData.fullName,
         email: user?.email || "",
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, '')}`,
         tourId: activity.id.toString(),
         userId: user?.id || user?._id,
         orderId: `tour-${activity.id}-${Date.now()}`,
@@ -123,6 +125,11 @@ export default function PaymentCard({
         // Store payment reference in localStorage for later verification
         localStorage.setItem('currentPaymentRef', response.paymentRef)
         localStorage.setItem('currentOrderId', response.orderId)
+        localStorage.setItem('currentPaymentAmount', total.toString())
+        localStorage.setItem('currentTourTitle', activity.title)
+        localStorage.setItem('currentTourId', activity.id.toString())
+        localStorage.setItem('currentGuideId', activity.guideId || '')
+        localStorage.setItem('currentUserId', user?.id || user?._id || '')
         
         console.log('Payment initialized successfully, redirecting to:', response.payUrl)
         
@@ -170,7 +177,8 @@ export default function PaymentCard({
         "w-full max-w-[400px]",
         "bg-white dark:bg-zinc-900",
         "shadow-sm transition-all duration-300",
-        "overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800",
+        "overflow-hidden rounded-xl border border-zinc-200/50 dark:border-zinc-800/50",
+        "relative"
       )}
     >
       <AnimatePresence mode="wait">
@@ -189,7 +197,7 @@ export default function PaymentCard({
               <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                    <Users className="w-4 h-4 text-blue-500" />
                     <span className="text-sm text-zinc-700 dark:text-zinc-300">Participants</span>
                   </div>
                   <span className="text-sm text-zinc-900 dark:text-zinc-100">
@@ -230,7 +238,7 @@ export default function PaymentCard({
               {/* Continue Button */}
               <Button
                 onClick={handleContinue}
-                className="w-full mt-5 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors duration-300 flex items-center justify-center gap-2"
+                className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-300 flex items-center justify-center gap-2 rounded-md"
               >
                 Réserver maintenant
                 <ArrowRight className="w-4 h-4" />
@@ -240,55 +248,34 @@ export default function PaymentCard({
         )}
 
         {step === 2 && (
-          <motion.div
-            key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="p-5">
-              <button
-                onClick={handleBack}
-                className="mb-3 text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm"
-              >
-                ← Retour
-              </button>
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Vos informations</h3>
+          <>
+            <button
+              onClick={handleBack}
+              className="absolute left-4 top-4 z-10"
+              aria-label="Retour"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-500" />
+            </button>
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="p-5 pt-8">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mt-2">Vos informations</h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{activity.title}</p>
 
               <div className="mt-5 grid gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="firstName" className="text-sm">
-                      Prénom
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-zinc-400 h-4 w-4" />
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        placeholder="Prénom"
-                        className="pl-8 h-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lastName" className="text-sm">
-                      Nom
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-zinc-400 h-4 w-4" />
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        placeholder="Nom"
-                        className="pl-8 h-9"
-                      />
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName" className="text-sm">
+                    Nom et prénom
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-zinc-400 h-4 w-4" />
+                    <div className="h-9 pl-8 flex items-center border rounded-md bg-gray-50 text-gray-600">
+                      {formData.fullName || "Non connecté"}
                     </div>
                   </div>
                 </div>
@@ -297,16 +284,33 @@ export default function PaymentCard({
                   <Label htmlFor="phoneNumber" className="text-sm">
                     Numéro de téléphone
                   </Label>
-                  <div className="relative">
-                    <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 text-zinc-400 h-4 w-4" />
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleInputChange}
-                      placeholder="22 123 456"
-                      className="pl-8 h-9"
-                    />
+                  <div className="flex">
+                    <div className="relative w-24">
+                      <select
+                        id="countryCode"
+                        name="countryCode"
+                        value={formData.countryCode}
+                        onChange={handleInputChange}
+                        className="h-9 rounded-l-md border border-r-0 border-input bg-background pl-3 pr-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 w-full"
+                      >
+                        <option value="+216">+216</option>
+                        <option value="+33">+33</option>
+                        <option value="+1">+1</option>
+                        <option value="+44">+44</option>
+                        <option value="+49">+49</option>
+                      </select>
+                    </div>
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 text-zinc-400 h-4 w-4" />
+                      <Input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={handleInputChange}
+                        placeholder="22 123 456"
+                        className="pl-8 h-9 rounded-l-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -319,7 +323,7 @@ export default function PaymentCard({
               <Button
                 onClick={handlePayment}
                 disabled={isLoading}
-                className="w-full mt-5 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors duration-300 flex items-center justify-center gap-2"
+                className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-300 flex items-center justify-center gap-2 rounded-md"
               >
                 {isLoading ? (
                   <>
@@ -339,6 +343,7 @@ export default function PaymentCard({
               </p>
             </div>
           </motion.div>
+          </>
         )}
 
         {step === 3 && (

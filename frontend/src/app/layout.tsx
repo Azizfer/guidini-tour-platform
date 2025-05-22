@@ -4,6 +4,7 @@ import { AuthProvider } from "./LogingContext/AuthContext"; //Make sure the whol
 import ClientWrapper from '../components/ClientWrapper';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
+import ChatWrapper from "@/components/chat-wrapper";
 
 
 export default function RootLayout({
@@ -16,9 +17,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <AuthProvider>
-            {children}
-            <ClientWrapper />
-            <Toaster />
+            <ChatWrapper>
+              {children}
+              <ClientWrapper />
+              <Toaster />
+            </ChatWrapper>
           </AuthProvider>
         </ThemeProvider>
       </body>
