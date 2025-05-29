@@ -15,5 +15,6 @@ router.post('/', auth, tourController.createTour);
 router.put('/:id', auth, tourController.updateTour);
 router.delete('/:id', auth, tourController.deleteTour);
 router.patch('/:id/toggle-visibility', auth, tourController.toggleTourVisibility);
+router.patch('/:id/mark-completed', auth, tourController.markTourAsCompleted);
 
 module.exports = router;

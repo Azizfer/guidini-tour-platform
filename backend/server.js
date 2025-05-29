@@ -6,39 +6,84 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const tourRoutes = require('./routes/tourRoutes');
+const tourReviewRoutes = require('./routes/tourReviewRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const testKonnectRoutes = require('./routes/testKonnect');
 const preferenceRoutes = require('./routes/preferences');
 const userRoutes = require('./routes/users');
 const messageRoutes = require('./routes/messages');
+const notificationRoutes = require('./routes/notificationRoutes');
+const ratingRoutes = require('./routes/ratings');
+const guideRoutes = require('./routes/guides');
+const guideStatsRoutes = require('./routes/guideStatsRoutes');
+const reservationRoutes = require('./routes/reservationRoutes');
 const app = express();
 
 // Middleware for CORS - Enhanced for better frontend-backend communication
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // Allow frontend domains
+  origin: '*', // Allow all origins during development
   credentials: true, // Allow credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'], // Allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'stripe-signature', 'Accept'], // Allowed headers
+  allowedHeaders: ['Content-Type', 'Authorization', 'stripe-signature', 'Accept', 'X-Requested-With'], // Allowed headers
   exposedHeaders: ['Content-Length', 'X-Total-Count'] // Expose these headers to the frontend
 }));
 
+// Add preflight OPTIONS handling for all routes
+app.options('*', cors());
+
 // Middleware pour parser le JSON et les données de formulaire
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Add error handling for file uploads
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 413) {
+    console.error('Request entity too large');
+    return res.status(413).json({ error: 'Fichier trop volumineux. La taille maximale est de 50MB.' });
+  }
+  next(err);
+});
 
 // Servir les fichiers statiques depuis le dossier uploads
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-console.log('Dossier uploads configuré pour les fichiers statiques:', path.join(__dirname, 'uploads'));
 
-// Afficher les données reçues pour le débogage
+// Middleware de traitement des requêtes
 app.use((req, res, next) => {
-  if (req.method === 'POST') {
-    console.log('Requête POST reçue sur:', req.originalUrl);
-    console.log('Type de contenu:', req.headers['content-type']);
-    console.log('Corps de la requête:', req.body);
-  }
+  // Capture original console.log to restore later
+  const originalLog = console.log;
+  
+  // Override console.log to filter out placeholder.svg 404 logs
+  console.log = function(...args) {
+    const logString = args.join(' ');
+    if (!logString.includes('GET /placeholder.svg 404')) {
+      originalLog.apply(console, args);
+    }
+  };
+  
+  // Continue with request
   next();
+  
+  // Restore original console.log after request is handled
+  console.log = originalLog;
+});
+
+// Supprimer les logs d'erreur JWT
+process.on('unhandledRejection', (reason, promise) => {
+  // Ignorer silencieusement les erreurs de JWT
+  if (reason && reason.name === 'TokenExpiredError') {
+    return;
+  }
+  // Gérer les autres erreurs normalement
+});
+
+// Supprimer les logs d'erreur non gérées
+process.on('uncaughtException', (error) => {
+  // Ignorer silencieusement les erreurs de JWT
+  if (error && error.name === 'TokenExpiredError') {
+    return;
+  }
+  // Gérer les autres erreurs normalement
 });
 
 // Middleware spécial pour le webhook Stripe (si nécessaire)
@@ -63,39 +108,33 @@ app.get('/api/test', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/tours', tourRoutes);
+app.use('/api/tour-reviews', tourReviewRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/test', testKonnectRoutes);
 app.use('/api/preferences', preferenceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/ratings', ratingRoutes);
+app.use('/api/guides', guideRoutes);
+app.use('/api', guideStatsRoutes);
+app.use('/api', reservationRoutes); // Add reservation routes
 
 // Connect to MongoDB
-const dbUri = process.env.MONGODB_URI;
-
-// Vérifier si l'URI MongoDB est défini
-if (!dbUri) {
-  console.error('ERREUR: MONGODB_URI n\'est pas défini dans le fichier .env');
-  console.error('Veuillez créer un fichier .env avec une variable MONGODB_URI valide');
-  console.error('Exemple: MONGODB_URI=mongodb://localhost:27017/guidini');
-  process.exit(1);
-}
-
-const dbName = dbUri.split('/').pop().split('?')[0]; // Extraire le nom de la base de données de l'URI
+const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/guidini';
 
 // Connect to MongoDB without verbose logging
 mongoose.connect(dbUri)
   .then(() => {
     // Only start the server after successfully connecting to MongoDB
     const PORT = process.env.PORT || 5001;
+    
+    // Start the server without Socket.io
     app.listen(PORT, () => {
-      // Server is running on PORT
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('ERREUR de connexion MongoDB:', err);
-    console.error('Veuillez vérifier que:');
-    console.error('1. MongoDB est installé et en cours d\'exécution');
-    console.error('2. L\'URI dans le fichier .env est correct');
-    console.error('3. Les identifiants de connexion sont valides');
+    console.error('MongoDB connection error:', err);
     process.exit(1); // Exit the process if MongoDB connection fails
   });

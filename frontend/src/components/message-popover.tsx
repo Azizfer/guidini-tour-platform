@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, X, MessageSquare, ChevronUp, ChevronDown, Loader2 } from "lucide-react"
+import { MessageSquare, ChevronUp, ChevronDown, Search, X, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
-import { useChat, ChatUser } from "@/contexts/chat-context"
+import { useChat, ChatUser } from "../contexts/chat-context"
 
 interface MessagePopoverProps {
   onViewAllMessages?: () => void
@@ -29,7 +29,7 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
   const [processedConversations, setProcessedConversations] = useState<ProcessedConversation[]>([]);
   
   // Function to prevent event propagation
-  const stopPropagation = (e: React.MouseEvent | React.TouchEvent) => {
+  const stopPropagation = (e: React.MouseEvent | React.TouchEvent | React.FocusEvent) => {
     e.stopPropagation();
   };
   
@@ -80,27 +80,33 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
     }
   };
   
-  // Get current user ID from the JWT token
-  const getCurrentUserId = (): string => {
+  // Get current user ID from JWT token
+  const getCurrentUserId = (): string | null => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        // Simple JWT parsing
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        
-        const payload = JSON.parse(jsonPayload);
-        return payload._id || payload.userId || payload.id;
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        console.warn('Not in browser environment');
+        return null;
       }
-    } catch (e) {
-      console.error('Error getting current user ID:', e);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token found in localStorage');
+        return null;
+      }
+      
+      // Parse JWT token
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const payload = JSON.parse(jsonPayload);
+      return payload.id || payload.userId || payload._id || "6460f087d0509a5a2e4c36a9"; // Fallback test user ID
+    } catch (error) {
+      return "6460f087d0509a5a2e4c36a9"; // Fallback test user ID
     }
-    
-    // Fallback to hardcoded ID if token parsing fails
-    return "682e10803651e668c119fbaf";
   };
   
   const currentUserId = getCurrentUserId();
@@ -160,12 +166,38 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
     processConversationsData();
   }, [conversations, getUserById, currentUserId]);
   
-  // Filter conversations based on search term
-  const filteredConversations = processedConversations.filter(conv => 
-    conv.user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Refresh conversations when the popover is opened
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await refreshConversations();
+      } catch (error) {
+        // Silent fail - UI will show empty state
+      }
+    };
+    
+    fetchData();
+    
+    // Set up an interval to refresh conversations periodically
+    const refreshInterval = setInterval(fetchData, 10000); // Refresh every 10 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [refreshConversations]);
+  
+  // Simple filtering logic for conversations based on search term
+  const filteredConversations = processedConversations.filter(conversation => {
+    if (!searchTerm || searchTerm.trim() === "") return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const nameLower = conversation.user.name.toLowerCase();
+    const messageLower = conversation.lastMessage.toLowerCase();
+    
+    return nameLower.includes(searchLower) || messageLower.includes(searchLower);
+  });
 
+  // Handle message click
   // Format timestamp to a readable format
   const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
@@ -187,57 +219,96 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
     }
   };
 
-  const handleMessageClick = (user: ChatUser) => {
-    // Open the chat with the selected user
-    openChat(user)
+  // Create a custom event for closing message popovers
+  useEffect(() => {
+    // Listen for the custom event to close this popover
+    const handleCloseMessagePopover = () => {
+      // Find and click any close buttons in the current component
+      const closeButtons = document.querySelectorAll('[data-popover-close]');
+      closeButtons.forEach(button => {
+        if (button instanceof HTMLElement) {
+          button.click();
+        }
+      });
+      
+      // Dispatch Escape key as fallback
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        which: 27,
+        bubbles: true,
+        cancelable: true
+      }));
+    };
     
-    // If there's a click handler for the popover, call it to close the popover
-    const popoverTrigger = document.querySelector('[data-state="open"][role="dialog"]');
-    if (popoverTrigger) {
-      // Find the close button and click it
-      const closeButton = popoverTrigger.querySelector('button[aria-label="Close"]');
-      if (closeButton && closeButton instanceof HTMLElement) {
-        closeButton.click();
-      } else {
-        // Fallback: add a click event to the document body to close any open popovers
-        document.body.click();
-      }
+    // Add event listener
+    window.addEventListener('closeMessagePopover', handleCloseMessagePopover);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('closeMessagePopover', handleCloseMessagePopover);
+    };
+  }, []);
+  
+  const handleMessageClick = (user: ChatUser) => {
+    // Open the chat with the selected user but don't navigate
+    openChat(user);
+    
+    // Create and dispatch a custom event specifically for the Header component
+    // This is a direct communication method to tell the Header to close the popover
+    const forceCloseEvent = new CustomEvent('forceCloseMessagePopover', {
+      detail: { timestamp: Date.now() }
+    });
+    window.dispatchEvent(forceCloseEvent);
+    
+    // Also call the onViewAllMessages prop if available
+    if (onViewAllMessages) {
+      onViewAllMessages();
+      return; // Exit early if we successfully called the parent function
     }
+    
+    // We'll avoid using fallback methods that might affect other popovers
+    // and only use the custom event which has been updated to be safe
   }
 
   return (
     <div 
-      className="w-[350px] bg-white rounded-lg shadow-xl overflow-hidden border border-gray-200 absolute right-0"
-      onClick={stopPropagation}
-      onMouseDown={stopPropagation}
-      onMouseUp={stopPropagation}
-      onTouchStart={stopPropagation}
-      onTouchEnd={stopPropagation}
-      onTouchMove={stopPropagation}
+      className="w-[350px] bg-white rounded-lg shadow-xl overflow-hidden border border-gray-200 absolute right-0 z-50 message-popover-container"
     >
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-gray-800 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-gray-500" />
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-blue-500" />
             Messages
-            {loadingConversations && (
-              <span className="ml-2">
-                <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
-              </span>
-            )}
             {unreadCount > 0 && (
-              <span className="bg-gray-100 text-gray-800 text-xs rounded-full px-2 py-0.5">{unreadCount}</span>
+              <span className="bg-blue-100 text-blue-600 text-xs rounded-full px-2 py-0.5 font-medium">{unreadCount}</span>
             )}
           </h3>
         </div>
-        <div className="mt-2 relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Rechercher..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 bg-white border-gray-200 text-gray-800 placeholder:text-gray-400 h-8 text-sm"
-          />
+        {/* Search field with NotificationCard styling */}
+        <div className="mt-2">
+          <div className="flex items-center border border-gray-200 rounded-md overflow-hidden bg-white transition-all duration-200 hover:border-blue-300 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-200">
+            <div className="px-2">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 py-1.5 px-1 text-sm border-0 focus:outline-none focus:ring-0"
+            />
+            {searchTerm && (
+              <button 
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="px-2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -248,12 +319,19 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
         onScroll={handleScroll}
       >
         {filteredConversations.length > 0 ? (
-          <div className="p-2">
+          <div>
+            {searchTerm && (
+              <div className="text-xs text-gray-500 px-4 py-2 border-b border-gray-100">
+                {filteredConversations.length} résultat{filteredConversations.length > 1 ? 's' : ''} trouvé{filteredConversations.length > 1 ? 's' : ''}
+              </div>
+            )}
             {filteredConversations.map((conversation) => {
-              const formattedTime = new Intl.DateTimeFormat('fr-FR', {
-                hour: '2-digit',
-                minute: '2-digit'
-              }).format(conversation.timestamp);
+              const formattedTime = formatTimestamp(conversation.timestamp);
+              
+              // Get accent color based on read status
+              const getAccentColor = () => {
+                return conversation.unread ? "border-blue-500" : "border-gray-300";
+              };
               
               return (
                 <motion.div
@@ -261,42 +339,42 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
                   initial={{ opacity: 0.8 }}
                   animate={{ opacity: 1 }}
                   className={cn(
-                    "relative bg-white border rounded-lg p-2 mb-2 cursor-pointer",
-                    conversation.unread ? "border-gray-200 bg-gray-50" : "border-gray-100",
+                    "px-4 py-3 border-b border-gray-100 last:border-0 transition-all duration-200 cursor-pointer",
+                    conversation.unread ? "" : "hover:bg-gray-50"
                   )}
                   onClick={() => handleMessageClick(conversation.user)}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-8 w-8 shrink-0">
-                      <img
-                        src={conversation.user.avatar || "/placeholder.svg"}
-                        alt={conversation.user.name}
-                        className="rounded-full object-cover h-8 w-8"
-                      />
-                      {conversation.user.online && (
-                        <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white" />
-                      )}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <img
+                          src={conversation.user.avatar || "/placeholder.svg"}
+                          alt={conversation.user.name}
+                          className={cn(
+                            "h-10 w-10 rounded-full object-cover border-2",
+                            getAccentColor()
+                          )}
+                        />
+                        {conversation.unread && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-500 rounded-full border border-white"></span>
+                        )}
+                        {conversation.user.online && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border border-white"></span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className={cn("text-sm font-medium", conversation.unread ? "text-gray-900" : "text-gray-700")}>
-                          {conversation.user.name}
-                        </p>
-                        <span className="text-xs text-gray-400">{formattedTime}</span>
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold text-sm text-gray-900 truncate">{conversation.user.name}</h4>
+                        <div className="flex items-center text-xs text-gray-500 whitespace-nowrap ml-2">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span>{formattedTime}</span>
+                        </div>
                       </div>
-                      <p
-                        className={cn(
-                          "text-[12px] mt-0.5 line-clamp-2",
-                          conversation.unread ? "text-gray-700" : "text-gray-500",
-                        )}
-                      >
-                        {conversation.lastMessage}
-                      </p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{conversation.lastMessage}</p>
                     </div>
                   </div>
-
-                  {conversation.unread && <div className="absolute bottom-3 right-3 h-2 w-2 rounded-full bg-blue-500" />}
                 </motion.div>
               );
             })}
@@ -304,9 +382,20 @@ export default function MessagePopover({ onViewAllMessages }: MessagePopoverProp
         ) : (
           <div className="p-8 text-center text-gray-500">
             <div className="flex justify-center mb-2">
-              <MessageSquare className="h-6 w-6 text-gray-300" />
+              {searchTerm ? (
+                <Search className="h-6 w-6 text-gray-300" />
+              ) : (
+                <MessageSquare className="h-6 w-6 text-blue-300" />
+              )}
             </div>
-            <p className="text-sm">Aucun message trouvé</p>
+            {searchTerm ? (
+              <>
+                <p className="text-sm font-medium">Aucun résultat pour "{searchTerm}"</p>
+                <p className="text-xs mt-1">Essayez avec d'autres termes de recherche</p>
+              </>
+            ) : (
+              <p className="text-sm">Aucun message trouvé</p>
+            )}
           </div>
         )}
       </div>

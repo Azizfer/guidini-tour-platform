@@ -7,7 +7,7 @@ const User = require('../models/User');
 exports.getConversations = async (req, res) => {
   try {
     const conversations = await Conversation.find({
-      participants: req.user.id
+      participants: req.user.id || req.user._id
     })
     .populate('participants', 'name profileImage username')
     .populate('lastMessage')
@@ -15,7 +15,6 @@ exports.getConversations = async (req, res) => {
     
     res.json(conversations);
   } catch (error) {
-    console.error('Error fetching conversations:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -31,7 +30,6 @@ exports.getConversationMessages = async (req, res) => {
     
     res.json(messages);
   } catch (error) {
-    console.error('Error fetching messages:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -53,7 +51,6 @@ exports.sendMessage = async (req, res) => {
     
     // Get the user ID (handle both req.user.id and req.user._id for compatibility)
     const userId = req.user.id || req.user._id;
-    console.log('MessageController: User ID from request:', userId);
     
     // Find existing conversation or create new one
     let conversation = await Conversation.findOne({
@@ -66,7 +63,6 @@ exports.sendMessage = async (req, res) => {
         participants: [userId, recipientId]
       });
       await conversation.save();
-      console.log('New conversation created:', conversation._id);
     }
     
     // Create new message
@@ -78,13 +74,11 @@ exports.sendMessage = async (req, res) => {
     });
     
     const savedMessage = await message.save();
-    console.log('Message saved to database:', savedMessage._id);
     
     // Update conversation with last message
     conversation.lastMessage = savedMessage._id;
     conversation.updatedAt = Date.now();
     await conversation.save();
-    console.log('Conversation updated with last message');
     
     // Populate sender info before sending response
     await savedMessage.populate({
@@ -100,7 +94,6 @@ exports.sendMessage = async (req, res) => {
     
     res.status(201).json(responseData);
   } catch (error) {
-    console.error('Error sending message:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -110,7 +103,6 @@ exports.markAsRead = async (req, res) => {
   try {
     // Get the user ID (handle both req.user.id and req.user._id for compatibility)
     const userId = req.user.id || req.user._id;
-    console.log('MarkAsRead: User ID from request:', userId);
     
     await Message.updateMany(
       { 
@@ -123,7 +115,6 @@ exports.markAsRead = async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error marking messages as read:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

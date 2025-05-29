@@ -16,7 +16,7 @@ const popularDestinations = [
     id: 1,
     name: "Sidi Bou Said",
     description: "Village aux maisons bleues et blanches surplombant la Méditerranée",
-    image: "/placeholder.svg?height=600&width=800&text=Sidi+Bou+Said",
+    image: "",
     tags: ["Culture", "Plage", "Architecture"],
     bestTime: "Avril - Octobre",
   },
@@ -24,7 +24,7 @@ const popularDestinations = [
     id: 2,
     name: "Djerba",
     description: "Île paradisiaque aux plages de sable fin et villages traditionnels",
-    image: "/placeholder.svg?height=600&width=800&text=Djerba",
+    image: "",
     tags: ["Plage", "Détente", "Histoire"],
     bestTime: "Mai - Septembre",
   },
@@ -32,7 +32,7 @@ const popularDestinations = [
     id: 3,
     name: "Carthage",
     description: "Site archéologique majeur de l'ancienne civilisation carthaginoise",
-    image: "/placeholder.svg?height=600&width=800&text=Carthage",
+    image: "",
     tags: ["Histoire", "Culture", "Architecture"],
     bestTime: "Mars - Novembre",
   },
@@ -40,7 +40,7 @@ const popularDestinations = [
     id: 4,
     name: "Sahara Tunisien",
     description: "Désert majestueux avec ses dunes dorées et oasis verdoyantes",
-    image: "/placeholder.svg?height=600&width=800&text=Sahara+Tunisien",
+    image: "",
     tags: ["Aventure", "Nature", "Expérience"],
     bestTime: "Octobre - Avril",
   },
@@ -305,13 +305,17 @@ export default function PopularDestinations() {
           className="flex justify-center mt-12 fade-in"
         >
           <Button
-            asChild
             className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = '/Destinations';
+            }}
           >
-            <Link href="/Destinations" className="inline-flex items-center">
+            <span className="inline-flex items-center">
               Voir toutes les destinations
               <ChevronRight className="ml-2 h-4 w-4" />
-            </Link>
+            </span>
           </Button>
         </motion.div>
       </div>

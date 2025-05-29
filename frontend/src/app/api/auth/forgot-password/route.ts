@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
+// Helper function to normalize email (trim and lowercase)
+const normalizeEmail = (email: string): string => {
+  return email.trim().toLowerCase();
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -13,13 +18,17 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Normalize email before sending to backend
+    const normalizedEmail = normalizeEmail(email);
+    console.log('Demande de réinitialisation de mot de passe pour:', normalizedEmail);
 
     const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: normalizedEmail }),
     });
 
     const data = await response.json();

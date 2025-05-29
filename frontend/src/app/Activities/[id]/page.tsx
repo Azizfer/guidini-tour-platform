@@ -2,7 +2,7 @@
 
 import ActivitiesList from './ActivitiesList'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import Footer from '@/components/footer'
 import ChatButton from '@/components/ChatButton'
 import { ThemeProvider } from 'next-themes'
 

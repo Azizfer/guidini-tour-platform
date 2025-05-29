@@ -310,12 +310,21 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                         setTimeout(() => {
                           onBackToSignIn();
                         }, 1500);
-                      } catch (error: any) {
-                        console.error("Registration error:", error);
+                      } catch (error) {
+                        // Type guard for AxiosError
+                        const axiosError = error as { 
+                          response?: { 
+                            data?: any, 
+                            status?: number, 
+                            statusText?: string 
+                          },
+                          message?: string
+                        };
+                        console.error("Registration error:", axiosError);
                         
                         // Handle specific error cases
-                        if (error.response?.data) {
-                          const errorData = error.response.data;
+                        if (axiosError.response?.data) {
+                          const errorData = axiosError.response.data;
                           
                           // Check for duplicate username error
                           if (errorData.field === 'username' || (errorData.error && errorData.error.includes('nom d\'utilisateur'))) {
@@ -333,11 +342,15 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                           setRegistrationError(errorData.error || "Une erreur est survenue lors de l'inscription.");
                         } else {
                           // Network or other errors
-                          setRegistrationError(error.message || "Une erreur de connexion est survenue.");
+                          // Type assertion for error to access message property safely
+                          const errorMessage = axiosError.message || "Une erreur de connexion est survenue.";
+                          setRegistrationError(errorMessage);
                         }
                       }
-                    } catch (error: any) {
-                      console.error("Registration process error:", error);
+                    } catch (error) {
+                      // Type guard for the error
+                      const unknownError = error as { message?: string };
+                      console.error("Registration process error:", unknownError);
                       setRegistrationError("Une erreur inattendue est survenue. Veuillez réessayer.");
                     }
                   }}

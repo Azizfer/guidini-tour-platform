@@ -16,9 +16,11 @@ interface ChatBubbleProps {
     avatar?: string
     online?: boolean
   }
+  showAvatar?: boolean
+  isSequential?: boolean
 }
 
-export default function ChatBubble({ message, senderInfo }: ChatBubbleProps) {
+export default function ChatBubble({ message, senderInfo, showAvatar = true, isSequential = false }: ChatBubbleProps) {
   // Ensure messages from the current user are always displayed on the right side
   const isUser = message.sender === "user";
   
@@ -35,30 +37,85 @@ export default function ChatBubble({ message, senderInfo }: ChatBubbleProps) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "flex w-full mb-3",
+        "flex w-full",
+        isSequential ? "mb-0.5" : "mb-1.5",
         isUser ? "justify-end" : "justify-start"
       )}
     >
+      {/* Avatar for other users (only show for non-user messages) */}
+      {!isUser && showAvatar && !isSequential && (
+        <div className="mr-2 flex-shrink-0 self-end mb-1">
+          <Avatar className="h-8 w-8 border border-gray-200">
+            {senderInfo.avatar ? (
+              <AvatarImage src={senderInfo.avatar} alt={senderInfo.name} />
+            ) : (
+              <AvatarFallback className="text-xs bg-gray-700 text-white">
+                {senderInfo.name.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            )}
+            {senderInfo.online && (
+              <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white" />
+            )}
+          </Avatar>
+        </div>
+      )}
+      
+      {/* Spacer div when avatar is hidden for sequential messages */}
+      {!isUser && (isSequential || !showAvatar) && (
+        <div className="w-10 flex-shrink-0"></div>
+      )}
+      
+      {/* User avatar - only shown if explicitly requested */}
+      {isUser && showAvatar && !isSequential && (
+        <div className="ml-2 flex-shrink-0 self-end mb-1 order-last">
+          <Avatar className="h-8 w-8 border border-gray-200">
+            {senderInfo.avatar ? (
+              <AvatarImage src={senderInfo.avatar} alt={senderInfo.name} />
+            ) : (
+              <AvatarFallback className="text-xs bg-blue-600 text-white">
+                {senderInfo.name.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            )}
+            {senderInfo.online && (
+              <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white" />
+            )}
+          </Avatar>
+        </div>
+      )}
+      
+      {/* Spacer div when user avatar is hidden for sequential messages */}
+      {isUser && (isSequential || !showAvatar) && (
+        <div className="w-10 flex-shrink-0 order-last"></div>
+      )}
+      
       {/* Message content */}
-      <div className="flex flex-col max-w-[75%]">
+      <div className={cn(
+        "flex flex-col", 
+        isSequential ? "max-w-[75%]" : "max-w-[75%]",
+        !isSequential && !isUser && "ml-0",
+        !isSequential && isUser && "mr-0"
+      )}>
+        {!isSequential && !isUser && (
+          <span className="text-xs text-gray-500 mb-1 ml-1">{senderInfo.name}</span>
+        )}
         <div
           className={cn(
-            "px-3 py-2 rounded-2xl",
+            "px-3 py-1.5",
             isUser
-              ? "bg-purple-600 text-white rounded-br-none" // Purple background for user messages
-              : "bg-gray-800 text-white rounded-bl-none" // Dark gray background for received messages
+              ? "bg-teal-500 text-white" // Teal background for user messages (matching Chatbot)
+              : "bg-gray-100 text-gray-800", // Light gray background for received messages (matching Chatbot)
+            isSequential && isUser
+              ? "rounded-xl rounded-tr-none"
+              : isSequential && !isUser
+              ? "rounded-xl rounded-tl-none"
+              : isUser
+              ? "rounded-xl rounded-tr-none"
+              : "rounded-xl rounded-tl-none"
           )}
         >
-          <p className="text-sm">{message.content}</p>
+          <p className="text-xs">{message.content}</p>
         </div>
-        <span
-          className={cn(
-            "text-xs mt-1 text-gray-500",
-            isUser ? "text-right" : "text-left"
-          )}
-        >
-          {formattedTime}
-        </span>
+        {/* Timestamp removed as requested */}
       </div>
     </motion.div>
   )

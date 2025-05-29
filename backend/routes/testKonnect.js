@@ -69,4 +69,82 @@ router.get('/test-konnect', async (req, res) => {
   }
 });
 
+// Test endpoint to simulate a payment completion and update guide stats
+router.post('/test-payment-completion', async (req, res) => {
+  try {
+    console.log('DEBUG: Test payment completion endpoint called');
+    
+    // Get required models
+    const Payment = require('../models/Payment');
+    const Tour = require('../models/Tour');
+    const GuideStats = require('../models/GuideStats');
+    
+    // Get tourId and guideId from request body or use defaults
+    const { tourId, guideId } = req.body;
+    
+    if (!tourId && !guideId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Either tourId or guideId is required' 
+      });
+    }
+    
+    let actualGuideId = guideId;
+    
+    // If only tourId is provided, get the guideId from the tour
+    if (!actualGuideId && tourId) {
+      const tour = await Tour.findById(tourId);
+      if (!tour) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Tour not found' 
+        });
+      }
+      actualGuideId = tour.guideId;
+    }
+    
+    if (!actualGuideId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Could not determine guideId' 
+      });
+    }
+    
+    console.log('DEBUG: Creating test payment with guideId:', actualGuideId);
+    
+    // Create a test payment with completed status
+    const payment = new Payment({
+      paymentRef: `test-${Date.now()}`,
+      orderId: `test-order-${Date.now()}`,
+      tourId: tourId || 'unknown',
+      amount: 1000, // 10 TND
+      status: 'completed',
+      customerName: 'Test User',
+      customerEmail: 'test@example.com',
+      paymentMethod: 'test'
+    });
+    
+    // Save the payment (this should trigger the pre-save hook)
+    const savedPayment = await payment.save();
+    console.log('DEBUG: Test payment saved:', savedPayment._id);
+    
+    // Get the updated guide stats
+    const stats = await GuideStats.findOne({ guideId: actualGuideId });
+    
+    res.json({
+      success: true,
+      message: 'Test payment completed and guide stats updated',
+      payment: savedPayment,
+      guideStats: stats
+    });
+  } catch (error) {
+    console.error('DEBUG: Error in test payment completion:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error processing test payment', 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

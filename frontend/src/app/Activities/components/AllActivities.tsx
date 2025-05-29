@@ -11,51 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import PaymentStatusChecker from "./payment-status-checker"
 
-// Données statiques pour les activités
-const staticActivities = [
-  {
-    id: 101,
-    title: "Visite guidée des ruines de Carthage",
-    image: "/images/carthage-ruins.jpg",
-    description: "Découvrez l'histoire fascinante de l'ancienne Carthage",
-    longDescription:
-      "Explorez les vestiges de l'ancienne cité punique et romaine avec un guide expert qui vous racontera l'histoire fascinante de ce site classé au patrimoine mondial de l'UNESCO.",
-    duration: "3 heures",
-    price: 45,
-    maxParticipants: 15,
-    dates: ["2024-04-05"],
-    category: "Histoire",
-    location: "Tunis",
-  },
-  {
-    id: 201,
-    title: "Balade dans les ruelles de Sidi Bou Said",
-    image: "/images/sidi-bou-said.jpg",
-    description: "Promenade dans le village blanc et bleu",
-    longDescription:
-      "Flânez dans les charmantes ruelles du village pittoresque de Sidi Bou Said, admirez l'architecture traditionnelle et profitez d'une vue imprenable sur la Méditerranée.",
-    duration: "2 heures",
-    price: 30,
-    maxParticipants: 10,
-    dates: ["2024-04-02", "2024-04-04", "2024-04-06"],
-    category: "Culture",
-    location: "Tunis",
-  },
-  {
-    id: 301,
-    title: "Excursion dans le désert du Sahara",
-    image: "/images/sahara.jpg",
-    description: "Aventure inoubliable dans les dunes",
-    longDescription:
-      "Partez à l'aventure dans le désert du Sahara, dormez sous les étoiles dans un campement traditionnel et profitez d'une balade à dos de chameau au coucher du soleil.",
-    duration: "2 jours",
-    price: 150,
-    maxParticipants: 12,
-    dates: ["2024-04-10", "2024-04-17", "2024-04-24"],
-    category: "Aventure",
-    location: "Sud Tunisien",
-  },
-]
+// No static activities - we'll only use real data from the API
 
 const categories = ["Toutes", "Histoire", "Culture", "Aventure", "Sport", "Gastronomie", "Visite"]
 
@@ -75,9 +31,9 @@ export default function AllActivities() {
 
   // Convertir les tours du store en format d'activités
   const tourActivities = tours
-    .filter((tour) => tour.isPublic)
+    .filter((tour) => tour.tourStatus === 'active')
     .map((tour) => ({
-      id: tour.id || `tour-${Math.random().toString(36).substring(2, 9)}`,
+      id: tour._id || tour.id || '', // Use the actual MongoDB ObjectId
       title: tour.title,
       image: tour.image || "/placeholder.svg?height=200&width=300",
       description: tour.description,
@@ -89,10 +45,11 @@ export default function AllActivities() {
       category: Array.isArray(tour.category) ? tour.category[0] : (tour.category || "Visite"),
       location: tour.location,
       guideId: tour.guideId, // Add the guideId to the activity data
+      guide: tour.guideName || 'Guide Professionnel', // Fix the typo in the guide name property
     }))
 
-  // Combiner les activités statiques et les tours
-  const allActivities = [...staticActivities, ...tourActivities]
+  // Utiliser uniquement les tours réels de l'API
+  const allActivities = [...tourActivities]
 
   // Filtrer les activités en fonction des critères
   const filteredActivities = allActivities.filter((activity) => {

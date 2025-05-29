@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "./styles/cursor-header.css";
-@import "./styles/messenger-badge.css";
 
 body {
   margin: 0;

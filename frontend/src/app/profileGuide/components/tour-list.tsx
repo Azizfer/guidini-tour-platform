@@ -15,7 +15,8 @@ import {
   CalendarIcon,
   ClockIcon,
   UsersIcon,
-  TagIcon
+  TagIcon,
+  CheckCircleIcon
 } from "@heroicons/react/24/outline"
 import { Tour } from "@/services/toursService"
 import TourEditForm from "./tour-edit-form"
@@ -29,15 +30,17 @@ interface TourListProps {
 }
 
 export default function TourList({ tours, isLoading, onToggleVisibility, onDelete, onTourUpdated }: TourListProps) {
-  const [activeTab, setActiveTab] = useState("all")
+  const [activeTab, setActiveTab] = useState("active")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [tourToDelete, setTourToDelete] = useState<string>("") 
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
 
   // Filtrer les tours en fonction de l'onglet actif
   const filteredTours = tours.filter(tour => {
-    if (activeTab === "all") return true
-    if (activeTab === "public") return tour.isPublic
-    if (activeTab === "private") return !tour.isPublic
+    if (activeTab === "active") return tour.tourStatus === 'active'
+    if (activeTab === "completed") return tour.tourStatus === 'completed'
+    if (activeTab === "private") return tour.tourStatus === 'private'
     return true
   })
 
@@ -48,9 +51,22 @@ export default function TourList({ tours, isLoading, onToggleVisibility, onDelet
   }
 
   // Gérer la fermeture du dialogue d'édition
-  const handleEditDialogClose = () => {
+  const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false)
     setSelectedTour(null)
+  }
+  
+  // Gérer la confirmation de suppression
+  const handleDeleteConfirmation = (tourId: string) => {
+    setTourToDelete(tourId)
+    setIsDeleteDialogOpen(true)
+  }
+  
+  // Effectuer la suppression après confirmation
+  const confirmDelete = () => {
+    onDelete(tourToDelete)
+    setIsDeleteDialogOpen(false)
+    setTourToDelete("")
   }
 
   // Gérer la sauvegarde d'un tour modifié
@@ -62,10 +78,10 @@ export default function TourList({ tours, isLoading, onToggleVisibility, onDelet
 
   return (
     <>
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">Toutes</TabsTrigger>
-          <TabsTrigger value="public">Publiques</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="completed">Complétés</TabsTrigger>
           <TabsTrigger value="private">Privées</TabsTrigger>
         </TabsList>
         
@@ -76,17 +92,18 @@ export default function TourList({ tours, isLoading, onToggleVisibility, onDelet
             </div>
           ) : filteredTours.length === 0 ? (
             <div className="flex flex-col justify-center items-center h-40 gap-2">
-              <p className="text-slate-500">Aucune visite {activeTab === "public" ? "publique" : activeTab === "private" ? "privée" : ""} trouvée</p>
+              <p className="text-slate-500">Aucune visite {activeTab === "active" ? "active" : activeTab === "completed" ? "complétée" : activeTab === "private" ? "privée" : ""} trouvée</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTours.map((tour) => (
+              {filteredTours.map((tour, index) => (
                 <TourCard
-                  key={tour._id || tour.id}
+                  key={`${tour._id || tour.id}-${index}`}
                   tour={tour}
                   onToggleVisibility={onToggleVisibility}
-                  onDelete={onDelete}
+                  onDelete={handleDeleteConfirmation}
                   openEditDialog={openEditDialog}
+                  onTourUpdated={onTourUpdated}
                 />
               ))}
             </div>
@@ -101,14 +118,17 @@ export default function TourList({ tours, isLoading, onToggleVisibility, onDelet
             <DialogTitle>Modifier la visite</DialogTitle>
           </DialogHeader>
           {selectedTour && (
-            <TourEditForm
-              tour={selectedTour}
-              onSave={handleTourSaved}
-              onCancel={handleEditDialogClose}
+            <TourEditForm 
+              tour={selectedTour} 
+              onSave={handleTourSaved} 
+              onCancel={handleCloseEditDialog} 
             />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Custom Delete Confirmation Dialog */}
+
     </>
   )
 }
@@ -118,10 +138,13 @@ interface TourCardProps {
   onToggleVisibility: (id: string) => void
   onDelete: (id: string) => void
   openEditDialog: (tour: Tour) => void
+  onTourUpdated: (updatedTour: Tour) => void
 }
 
-function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog }: TourCardProps) {
+function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog, onTourUpdated }: TourCardProps) {
+  // Ensure we have a valid ID for the tour - MongoDB uses _id
   const tourId = tour._id || tour.id || ""
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   
   return (
     <Card className="overflow-hidden flex flex-col h-full">
@@ -153,32 +176,55 @@ function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog }: TourCa
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="flex items-center gap-2 cursor-pointer"
-                onClick={() => onToggleVisibility(tourId)}
-              >
-                {tour.isPublic ? (
-                  <>
-                    <EyeSlashIcon className="h-4 w-4" />
-                    <span>Passer en privé</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeIcon className="h-4 w-4" />
-                    <span>Publier</span>
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-2 cursor-pointer"
-                onClick={() => openEditDialog(tour)}
-              >
-                <PencilIcon className="h-4 w-4" />
-                <span>Modifier</span>
-              </DropdownMenuItem>
+              {/* Only show visibility toggle for non-completed tours */}
+              {tour.tourStatus !== 'completed' && (
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => onToggleVisibility(tourId)}
+                >
+                  {tour.tourStatus === 'active' ? (
+                    <>
+                      <EyeSlashIcon className="h-4 w-4" />
+                      <span>Passer en privé</span>
+                    </>
+                  ) : tour.tourStatus === 'private' ? (
+                    <>
+                      <EyeIcon className="h-4 w-4" />
+                      <span>Passer en public</span>
+                    </>
+                  ) : null}
+                </DropdownMenuItem>
+              )}
+              {/* Only show 'Mark as completed' for active tours (not private or completed) */}
+              {tour.tourStatus === 'active' && (
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => {
+                    console.log(`Marking tour ${tourId} as completed`);
+                    // Dispatch event to mark tour as completed
+                    const event = new CustomEvent('tourStatusChanged', {
+                      detail: { tourId, status: 'completed' }
+                    });
+                    window.dispatchEvent(event);
+                  }}
+                >
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span>Marquer comme complété</span>
+                </DropdownMenuItem>
+              )}
+              {/* Hide the Modifier option for completed tours */}
+              {tour.tourStatus !== 'completed' && (
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => openEditDialog(tour)}
+                >
+                  <PencilIcon className="h-4 w-4" />
+                  <span>Modifier</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 className="flex items-center gap-2 text-red-600 cursor-pointer"
-                onClick={() => onDelete(tourId)}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <TrashIcon className="h-4 w-4" />
                 <span>Supprimer</span>
@@ -221,12 +267,59 @@ function TourCard({ tour, onToggleVisibility, onDelete, openEditDialog }: TourCa
         <div className="text-slate-900 font-semibold">{tour.price} TND</div>
         <div className="flex items-center gap-1">
           <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
-            tour.isPublic ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
+            tour.tourStatus === 'active' ? "bg-blue-100 text-blue-800" : 
+            tour.tourStatus === 'completed' ? "bg-green-100 text-green-800" : 
+            "bg-amber-100 text-amber-800"
           }`}>
-            {tour.isPublic ? "Publique" : "Privée"}
+            {tour.tourStatus === 'active' ? "Active" : 
+             tour.tourStatus === 'completed' ? "Complété" : 
+             "Privée"}
           </span>
         </div>
       </CardFooter>
+
+      {/* Custom Delete Confirmation Dialog */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop overlay */}
+          <div className="absolute inset-0 bg-black/70" onClick={() => setIsDeleteDialogOpen(false)}></div>
+          
+          {/* Confirmation dialog */}
+          <div className="relative bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4 text-center">
+            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmation de suppression</h3>
+            <p className="text-slate-700 mb-6">
+              Êtes-vous sûr de vouloir supprimer cette visite ?
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!tourId) {
+                    console.error('Tentative de suppression avec un ID invalide');
+                    return;
+                  }
+                  
+                  // Fermer la boîte de dialogue immédiatement
+                  setIsDeleteDialogOpen(false);
+                  
+                  // Appeler la fonction de suppression
+                  onDelete(tourId);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-6"
+              >
+                Supprimer
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="px-6"
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

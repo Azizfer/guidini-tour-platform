@@ -36,9 +36,10 @@ const tourSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  isPublic: {
-    type: Boolean,
-    default: true
+  tourStatus: {
+    type: String,
+    enum: ['active', 'completed', 'private'],
+    default: 'active'
   },
   image: {
     type: String,

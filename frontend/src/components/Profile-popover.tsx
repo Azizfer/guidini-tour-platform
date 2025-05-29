@@ -22,10 +22,31 @@ interface ProfilePopoverProps {
 export default function ProfilePopover({ user }: ProfilePopoverProps) {
   // Use the hook to get the open function
   const { open: openLogoutConfirmation } = useLogoutConfirmation()
-  // State to track online status and disconnect time
+  // State for user data and online status
+  const [userData, setUserData] = useState(user)
   const [isOnline, setIsOnline] = useState(true)
   const [disconnectTime, setDisconnectTime] = useState<Date | null>(null)
   const [disconnectMinutes, setDisconnectMinutes] = useState(0)
+  
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      const updatedUser = event.detail
+      console.log("Profile updated event received:", updatedUser)
+      setUserData({
+        ...userData,
+        name: updatedUser.name,
+        email: updatedUser.email
+      })
+    }
+
+    // Add event listener for profile updates
+    window.addEventListener("userProfileUpdated", handleProfileUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate as EventListener)
+    }
+  }, [userData])
 
   // Update disconnect time every minute
   useEffect(() => {
@@ -113,8 +134,8 @@ export default function ProfilePopover({ user }: ProfilePopoverProps) {
             </div>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 text-sm">{user.name}</h4>
-            <p className="text-xs text-gray-500">{user.email}</p>
+            <h4 className="font-medium text-gray-900 text-sm">{userData.name}</h4>
+            <p className="text-xs text-gray-500">{userData.email}</p>
           </div>
         </div>
       </div>

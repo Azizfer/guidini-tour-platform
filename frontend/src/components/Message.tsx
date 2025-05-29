@@ -1,5 +1,5 @@
 // Frontend: src/components/MessagesIconWithPopover.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMessages } from '@/app/Message/MessageContext';
@@ -10,15 +10,41 @@ export default function MessagesIconWithPopover() {
   const { conversations, totalUnreadMessages, setCurrentConversation } = useMessages();
   const router = useRouter();
 
+  // Listen for the custom closeMessagePopover event
+  useEffect(() => {
+    const handleClosePopover = () => {
+      setIsOpen(false);
+    };
+
+    // Add event listener
+    window.addEventListener('closeMessagePopover', handleClosePopover);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('closeMessagePopover', handleClosePopover);
+    };
+  }, []);
+
   const handleOpenMessages = () => {
-    router.push('/messages');
+    // Don't navigate to messages page
+    // router.push('/messages');
     setIsOpen(false);
   };
 
   const handleConversationClick = (conversationId: string) => {
+    // Set current conversation but don't navigate
     setCurrentConversation(conversationId);
-    router.push(`/messages/${conversationId}`);
+    
+    // Close this popover
     setIsOpen(false);
+    
+    // Dispatch custom event to close all message popovers
+    window.dispatchEvent(new Event('closeMessagePopover'));
+    
+    // Additional fallback - click the document body
+    setTimeout(() => {
+      document.body.click();
+    }, 100);
   };
 
   return (

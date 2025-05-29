@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,83 +22,133 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/app/LogingContext/AuthContext"
 
-// Données fictives pour les réservations
-const mockReservations = [
-  {
-    id: "1",
-    tourId: "1",
-    tourName: "Visite historique de la médina de Sousse",
-    touristName: "John Smith",
-    touristEmail: "john@example.com",
-    touristPhone: "+216 12 345 678",
-    date: "2023-07-15",
-    time: "09:00",
-    participants: 2,
-    totalPrice: 90,
-    status: "pending", // en attente, confirmé, terminé, annulé
-    notes: "Je suis intéressé par les aspects historiques de la médina.",
-    createdAt: "2023-07-01",
-  },
-  {
-    id: "2",
-    tourId: "2",
-    tourName: "Visite du Ribat de Monastir et du Mausolée",
-    touristName: "Emma Johnson",
-    touristEmail: "emma@example.com",
-    touristPhone: "+216 98 765 432",
-    date: "2023-07-20",
-    time: "10:00",
-    participants: 3,
-    totalPrice: 165,
-    status: "confirmed",
-    notes: "Nous sommes une famille de 3, dont un enfant de 10 ans.",
-    createdAt: "2023-07-05",
-  },
-  {
-    id: "3",
-    tourId: "1",
-    tourName: "Visite historique de la médina de Sousse",
-    touristName: "Michael Brown",
-    touristEmail: "michael@example.com",
-    touristPhone: "+216 55 555 555",
-    date: "2023-07-18",
-    time: "14:00",
-    participants: 1,
-    totalPrice: 45,
-    status: "completed",
-    notes: "Je suis professeur d'histoire intéressé par l'architecture islamique.",
-    createdAt: "2023-07-02",
-  },
-  {
-    id: "4",
-    tourId: "3",
-    tourName: "Expérience de plage à Sousse",
-    touristName: "Sarah Wilson",
-    touristEmail: "sarah@example.com",
-    touristPhone: "+216 44 444 444",
-    date: "2023-07-25",
-    time: "08:30",
-    participants: 4,
-    totalPrice: 260,
-    status: "cancelled",
-    notes: "Nous attendons des activités nautiques.",
-    createdAt: "2023-07-10",
-  },
-]
+// Interface for reservation data
+interface Reservation {
+  id: string;
+  tourId: string;
+  tourName: string;
+  touristName: string;
+  touristEmail: string;
+  touristPhone: string;
+  date: string;
+  time: string;
+  participants: number;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+}
 
 export default function GuideReservations() {
-  const [reservations, setReservations] = useState(mockReservations)
-  const [selectedReservation, setSelectedReservation] = useState<(typeof mockReservations)[0] | null>(null)
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [responseMessage, setResponseMessage] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
 
-  const updateReservationStatus = (id: string, status: string) => {
-    setReservations(
-      reservations.map((reservation) => (reservation.id === id ? { ...reservation, status } : reservation)),
-    )
-    setIsDetailsOpen(false)
+  // Function to fetch and process reservations
+  const fetchReservations = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Get the guide ID from localStorage or auth context
+      const guideId = user?.id || localStorage.getItem('userId')
+      
+      if (!guideId) {
+        setError('Aucun ID de guide trouvé. Veuillez vous reconnecter.')
+        setLoading(false)
+        return
+      }
+      
+      console.log('Fetching reservations for guide:', guideId)
+      
+      // Fetch reservations for this guide
+      let reservationData: any[] = []
+      try {
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/guides/${guideId}/reservations`
+        console.log('Calling API URL:', apiUrl)
+        
+        const token = localStorage.getItem('token')
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        // Log response status for debugging
+        console.log(`Reservation API response status: ${response.status}`)
+        
+        if (!response.ok) {
+          console.warn(`Reservation API returned non-OK status: ${response.status}`)
+          // Don't throw here, we'll continue with empty array
+        } else {
+          reservationData = await response.json()
+          console.log(`Fetched ${reservationData.length} reservations from API`)
+        }
+      } catch (fetchError) {
+        console.error('Error fetching reservations:', fetchError)
+        // Continue with empty array
+      }
+      
+      // Transform the data to match our interface
+      const formattedReservations = reservationData.map((reservation: any) => {
+        console.log('Processing reservation:', reservation);
+        return {
+          id: reservation._id || reservation.id,
+          tourId: reservation.tourId,
+          tourName: reservation.tourName,
+          touristName: reservation.touristName || 'Client',
+          touristEmail: reservation.touristEmail || 'email@example.com',
+          touristPhone: reservation.touristPhone || '+216 XX XXX XXX',
+          date: reservation.date,
+          time: reservation.time || '12:00',
+          participants: reservation.participants || 1,
+          totalPrice: reservation.totalPrice || 0,
+          status: reservation.status || 'confirmed',
+          createdAt: reservation.createdAt
+        };
+      });
+      
+      setReservations(formattedReservations)
+    } catch (err: any) {
+      console.error('Error fetching reservations:', err)
+      setError(err.message || 'Erreur lors de la récupération des réservations')
+    } finally {
+      setLoading(false)
+    }
   }
+  
+  // Fetch reservations on component mount
+  useEffect(() => {
+    fetchReservations()
+  }, [user])
+  
+  // Listen for reservation update events
+  useEffect(() => {
+    // Create a handler for the custom reservation update event
+    const handleReservationUpdate = (event: Event) => {
+      console.log('Reservation update event received, refreshing reservations')
+      fetchReservations()
+    }
+    
+    // Add event listener for reservation updates
+    window.addEventListener('reservationUpdate', handleReservationUpdate)
+    
+    // Also listen for notification updates as they might indicate new reservations
+    window.addEventListener('notificationUpdate', handleReservationUpdate)
+    
+    // Clean up event listeners on component unmount
+    return () => {
+      window.removeEventListener('reservationUpdate', handleReservationUpdate)
+      window.removeEventListener('notificationUpdate', handleReservationUpdate)
+    }
+  }, [])
 
   const sendResponse = () => {
     // Dans une vraie application, cela enverrait un message au touriste
@@ -118,18 +168,6 @@ export default function GuideReservations() {
           <TabsTrigger value="all" className="flex-1">
             Toutes les réservations
           </TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1">
-            En attente
-          </TabsTrigger>
-          <TabsTrigger value="confirmed" className="flex-1">
-            Confirmées
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="flex-1">
-            Terminées
-          </TabsTrigger>
-          <TabsTrigger value="cancelled" className="flex-1">
-            Annulées
-          </TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -145,24 +183,6 @@ export default function GuideReservations() {
             ))}
           </div>
         </TabsContent>
-        {["pending", "confirmed", "completed", "cancelled"].map((status) => (
-          <TabsContent key={status} value={status} className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reservations
-                .filter((reservation) => reservation.status === status)
-                .map((reservation) => (
-                  <ReservationCard
-                    key={reservation.id}
-                    reservation={reservation}
-                    onViewDetails={() => {
-                      setSelectedReservation(reservation)
-                      setIsDetailsOpen(true)
-                    }}
-                  />
-                ))}
-            </div>
-          </TabsContent>
-        ))}
       </Tabs>
 
       {selectedReservation && (
@@ -193,59 +213,15 @@ export default function GuideReservations() {
                   <p className="text-sm text-slate-600">Prix total : {selectedReservation.totalPrice} TND</p>
                 </div>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-slate-700">Notes du touriste</h3>
-                <p className="text-sm bg-slate-100 p-2 rounded-md mt-1 text-slate-600">{selectedReservation.notes}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-slate-700">Répondre au touriste</h3>
-                <Textarea
-                  placeholder="Tapez votre message ici..."
-                  value={responseMessage}
-                  onChange={(e) => setResponseMessage(e.target.value)}
-                  className="mt-1"
-                />
+              <div className="flex justify-end">
+                <Button
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0"
+                  onClick={() => setIsDetailsOpen(false)}
+                >
+                  Fermer
+                </Button>
               </div>
             </div>
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              {selectedReservation.status === "pending" && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => updateReservationStatus(selectedReservation.id, "confirmed")}
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    Confirmer
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex items-center gap-2"
-                    onClick={() => updateReservationStatus(selectedReservation.id, "cancelled")}
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                    Annuler
-                  </Button>
-                </>
-              )}
-              {selectedReservation.status === "confirmed" && (
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={() => updateReservationStatus(selectedReservation.id, "completed")}
-                >
-                  <CheckIcon className="h-4 w-4" />
-                  Marquer comme terminé
-                </Button>
-              )}
-              <Button
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0"
-                onClick={sendResponse}
-              >
-                <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                Envoyer le message
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
@@ -254,22 +230,8 @@ export default function GuideReservations() {
 }
 
 interface ReservationCardProps {
-  reservation: {
-    id: string
-    tourId: string
-    tourName: string
-    touristName: string
-    touristEmail: string
-    touristPhone: string
-    date: string
-    time: string
-    participants: number
-    totalPrice: number
-    status: string
-    notes: string
-    createdAt: string
-  }
-  onViewDetails: () => void
+  reservation: Reservation;
+  onViewDetails: () => void;
 }
 
 function ReservationCard({ reservation, onViewDetails }: ReservationCardProps) {

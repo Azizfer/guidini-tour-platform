@@ -5,8 +5,7 @@ import HeroSection from "@/components/Hero"
 import PopularDestinations from "@/components/popular-destinations"
 import PopularActivities from "@/app/Activities/components/popular-activities"
 import PopularGuides from "@/app/guides/components/popular-guides"
-import Footer from "@/components/Footer"
-import GlobalRating from "@/components/global-rating"
+import Footer from "@/components/footer"
 import ScrollToTop from "@/components/scroll-to-top"
 import ScrollProgress from "@/components/scroll-progress"
 import ChatButton from "@/components/Chatbot"
@@ -42,10 +41,6 @@ export default function Home() {
 
         <section id="guides" className="scroll-section">
           <PopularGuides />
-        </section>
-
-        <section id="ratings" className="scroll-section">
-          <GlobalRating />
         </section>
       </div>
 

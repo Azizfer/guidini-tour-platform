@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 
+// Define types for chat functionality
 export interface ChatUser {
   id: string
   name: string
@@ -58,17 +59,66 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const currentUserId = "682e10803651e668c119fbaf" // Hardcoded user ID for development
+  // Get current user ID from JWT token
+  const getCurrentUserId = () => {
+    try {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        return null;
+      }
 
+      const token = localStorage.getItem('token')
+      if (!token) {
+        return null;
+      }
+      
+      // Parse JWT token
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        return null;
+      }
+      
+      const base64Url = tokenParts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      
+      try {
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        }).join(''))
+        
+        const payload = JSON.parse(jsonPayload)
+        const userId = payload.id || payload.userId || payload._id;
+        
+        if (!userId) {
+          return null;
+        }
+        
+        return userId;
+      } catch (decodeError) {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const currentUserId = getCurrentUserId()
+
+  // Calculate unread message count
   const unreadCount = conversations.reduce((count, conv) => {
+    if (!currentUserId) return count;
+    
     if (conv.lastMessage && 
+        conv.lastMessage.sender && 
         conv.lastMessage.sender._id !== currentUserId && 
+        conv.lastMessage.readBy && 
         !conv.lastMessage.readBy.includes(currentUserId)) {
       return count + 1
     }
     return count
   }, 0)
 
+  // Get user details by ID
   const getUserById = async (userId: string): Promise<ChatUser> => {
     if (users[userId]) {
       return users[userId]
@@ -82,7 +132,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const user = {
           id: userId,
           name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username,
-          avatar: userData.profileImage || `/placeholder.svg?height=40&width=40&text=${(userData.name || userData.username || '?').charAt(0).toUpperCase()}`,
+          avatar: userData.profileImage,
           online: false
         }
         
@@ -92,22 +142,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }))
         
         return user
+      } else {
+        throw new Error(`Failed to fetch user data: ${response.status}`)
       }
     } catch (error) {
-      console.error('Error fetching user data:', error)
-    }
-    
-    const knownUsers: Record<string, { name: string, initials: string }> = {
-      "682e10803651e668c119fbaf": { name: "Aziz Ferchichi", initials: "AF" },
-      "682e15ae0f8b060923637173": { name: "Guide Touristique", initials: "GT" }
-    }
-    
-    if (knownUsers[userId]) {
+      // Return a basic user object if we can't fetch the real data
       const user = {
         id: userId,
-        name: knownUsers[userId].name,
-        avatar: `/placeholder.svg?height=40&width=40&text=${knownUsers[userId].initials}`,
-        online: true
+        name: "User",
+        avatar: undefined,
+        online: false
       }
       
       setUsers(prev => ({
@@ -117,100 +161,101 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       
       return user
     }
-    
-    const nameHash = userId.substring(0, 6)
-    const names = [
-      'John', 'Jane', 'Alex', 'Sarah', 'Mohammed', 'Fatima', 'Carlos', 'Maria',
-      'Hiroshi', 'Yuki', 'Chen', 'Li', 'Raj', 'Priya', 'Olga', 'Dmitri'
-    ]
-    const surnames = [
-      'Smith', 'Johnson', 'Garcia', 'Chen', 'Patel', 'Sato', 'Kim', 'Ivanov',
-      'Müller', 'Silva', 'Okafor', 'Nguyen', 'Ali', 'Kowalski', 'Rossi', 'Singh'
-    ]
-    
-    const nameIndex = parseInt(nameHash.substring(0, 2), 16) % names.length
-    const surnameIndex = parseInt(nameHash.substring(2, 4), 16) % surnames.length
-    const name = `${names[nameIndex]} ${surnames[surnameIndex]}`
-    const initials = `${names[nameIndex].charAt(0)}${surnames[surnameIndex].charAt(0)}`
-    
-    const user = {
-      id: userId,
-      name: name,
-      avatar: `/placeholder.svg?height=40&width=40&text=${initials}`,
-      online: parseInt(nameHash.substring(4, 6), 16) % 2 === 0
-    }
-    
-    setUsers(prev => ({
-      ...prev,
-      [userId]: user
-    }))
-    
-    return user
   }
 
+  // Fetch all conversations for the current user
   const fetchConversations = async () => {
-    console.log('Fetching conversations for user:', currentUserId)
     try {
+      // Check if we have a valid token and user ID
+      const token = localStorage.getItem('token')
+      if (!token || !currentUserId) {
+        setError('Authentification requise pour charger les conversations')
+        setConversations([])
+        setLoadingConversations(false)
+        return
+      }
+      
       setLoadingConversations(true)
       setError(null)
       
-      const token = localStorage.getItem('token')
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
       
       const response = await fetch('http://localhost:5001/api/messages/conversations', {
         headers
       })
       
-      console.log('Conversations API response status:', response.status)
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Conversations received:', data)
+
         setConversations(data || [])
         
+        // Load user details for all participants
         const userIds = new Set<string>()
         if (data && data.length > 0) {
           data.forEach((conversation: any) => {
-            console.log('Processing conversation:', conversation._id)
             if (conversation.participants) {
               conversation.participants.forEach((participant: any) => {
                 if (participant && participant._id && participant._id !== currentUserId) {
-                  console.log('Adding participant to fetch:', participant._id, participant.name || 'Unknown')
                   userIds.add(participant._id)
                 }
               })
             }
           })
           
-          console.log('User IDs to fetch:', Array.from(userIds))
+
           const userPromises = Array.from(userIds).map(id => getUserById(id))
           await Promise.all(userPromises)
         }
       } else {
-        const errorText = await response.text().catch(() => 'Unknown error')
-        console.error(`Failed to fetch conversations: ${response.status} - ${errorText}`)
-        setConversations([])
+        // Try to parse the error response
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: 'Unknown error', code: 'UNKNOWN' };
+        }
+        
+        // Keep existing conversations instead of clearing them on error
+        // This provides a better user experience when there are network issues
+        
+        // Handle token expiration specifically
+        if (response.status === 401) {
+          if (errorData.code === 'TOKEN_EXPIRED') {
+            // Token expired - clear token and notify user
+            localStorage.removeItem('token');
+            setError('Votre session a expiré. Veuillez vous reconnecter.');
+          } else {
+            // Other auth error
+            setError('Authentification requise. Veuillez vous reconnecter.');
+          }
+        } else {
+          // Other server error
+          setError(`Impossible de charger les conversations: ${errorData.message || response.status}`);
+        }
       }
     } catch (error) {
-      console.error('Error fetching conversations:', error)
-      setConversations([])
+      // Keep existing conversations instead of clearing them on error
+      setError('Impossible de se connecter au service de chat')
     } finally {
       setLoadingConversations(false)
     }
   }
 
+  // Refresh conversations list
   const refreshConversations = async () => {
-    await fetchConversations()
+    // Only fetch if we're not already loading conversations
+    if (!loadingConversations) {
+      await fetchConversations()
+    }
   }
   
+  // Fetch messages for a specific conversation
   const fetchMessages = async (conversationId: string) => {
-    console.log('Fetching messages for conversation:', conversationId)
     try {
       setLoadingMessages(true)
       setError(null)
@@ -228,25 +273,44 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         headers
       })
       
-      console.log('Messages API response status:', response.status)
-      
       if (response.ok) {
         const data = await response.json()
-        console.log('Messages received:', data)
         setMessages(data || [])
       } else {
-        const errorText = await response.text().catch(() => 'Unknown error')
-        console.error(`Failed to fetch messages: ${response.status} - ${errorText}`)
+        // Try to parse the error response
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: 'Unknown error', code: 'UNKNOWN' };
+        }
+        
         setMessages([])
+        
+        // Handle token expiration specifically
+        if (response.status === 401) {
+          if (errorData.code === 'TOKEN_EXPIRED') {
+            // Token expired - clear token and notify user
+            localStorage.removeItem('token');
+            setError('Votre session a expiré. Veuillez vous reconnecter.');
+          } else {
+            // Other auth error
+            setError('Authentification requise. Veuillez vous reconnecter.');
+          }
+        } else {
+          // Other server error
+          setError(`Impossible de charger les messages: ${errorData.message || response.status}`);
+        }
       }
     } catch (error) {
-      console.error('Error fetching messages:', error)
       setMessages([])
+      setError('Unable to load messages')
     } finally {
       setLoadingMessages(false)
     }
   }
 
+  // Send a new message
   const sendMessage = async (content: string, recipientId: string) => {
     if (!content.trim()) return
     
@@ -254,15 +318,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setLoadingMessages(true)
       setError(null)
       
+      
+      // Check if we have a valid token and user ID
+      const token = localStorage.getItem('token')
+      if (!token || !currentUserId) {
+        setError('Authentification requise pour envoyer des messages')
+        setLoadingMessages(false)
+        return
+      }
+      
       // Create a temporary message to show immediately in the UI
-      // Make sure it has the correct sender format to appear on the right side
+      const tempId = `temp-${Date.now()}`
       const tempMessage: Message = {
-        _id: `temp-${Date.now()}`,
+        _id: tempId,
         content,
         sender: {
-          _id: currentUserId, // This ensures it's recognized as a user message
+          _id: currentUserId,
           name: 'You',
-          // Add any other required properties to ensure consistent rendering
           profileImage: undefined,
           username: 'current-user'
         },
@@ -271,25 +343,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString()
       }
       
-      // Add temporary message to the UI immediately without causing a full reload
-      setMessages(prev => {
-        // Create a new array with the existing messages plus the new one
-        const newMessages = [...prev, tempMessage]
-        // Return the new array
-        return newMessages
-      })
+      // Add temporary message to the UI immediately
+      setMessages(prev => [
+        ...prev, 
+        tempMessage
+      ])
       
-      // Get token for authentication
-      const token = localStorage.getItem('token')
+      
       const headers: HeadersInit = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
-      // Send message to backend
+      // Try to send to backend
       const response = await fetch('http://localhost:5001/api/messages/send', {
         method: 'POST',
         headers,
@@ -300,165 +366,160 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       })
       
       if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error')
-        // Remove the temporary message if sending failed
-        setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id))
-        throw new Error(`Failed to send message: ${response.status} - ${errorText}`)
+        // Try to parse the error response
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: 'Unknown error', code: 'UNKNOWN' };
+        }
+        
+        // Handle token expiration specifically
+        if (response.status === 401) {
+          if (errorData.code === 'TOKEN_EXPIRED') {
+            // Token expired - clear token and notify user
+            localStorage.removeItem('token');
+            setError('Votre session a expiré. Veuillez vous reconnecter.');
+          } else {
+            // Other auth error
+            setError('Authentification requise. Veuillez vous reconnecter.');
+          }
+        } else {
+          // Other server error
+          setError(`Message affiché localement uniquement. Erreur: ${errorData.message || response.status}`);
+        }
+        return;
       }
       
+      // Message successfully stored in database
       const data = await response.json()
-      console.log('Message sent successfully:', data)
       
-      // Remove temporary message and fetch the real messages
-      if (activeConversation) {
-        fetchMessages(activeConversation)
-      } else if (data?.conversation) {
-        setActiveConversation(data.conversation)
-        fetchMessages(data.conversation)
+      // Replace the temporary message with the real one from the database
+      setMessages(prev => prev.map(msg => 
+        msg._id === tempId ? data : msg
+      ))
+      
+      // Refresh conversations to update the list with the new message
+      try {
+        await refreshConversations()
+      } catch (refreshError) {
+        // Silent fail - we still sent the message successfully
       }
       
-      // Refresh conversation list to update last message
-      fetchConversations()
     } catch (error) {
-      console.error('Error sending message:', error)
-      setError('Failed to send message. Please try again.')
+      // Keep the message visible in UI even if saving failed
+      setError('Message shown locally only. Could not save to database.')
     } finally {
       setLoadingMessages(false)
     }
   }
 
-  const markMessagesAsRead = async (conversationId: string) => {
-    console.log('Marking messages as read for conversation:', conversationId)
-    try {
-      const token = localStorage.getItem('token')
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
-      // Use the correct endpoint for marking messages as read
-      const response = await fetch(`http://localhost:5001/api/messages/read/${conversationId}`, {
-        method: 'PUT',  // Use PUT method as defined in the backend
-        headers
-      })
-      
-      if (response.ok) {
-        // Update local messages to reflect read status
-        setMessages(prev => {
-          return prev.map(msg => {
-            // Only update messages that aren't from the current user and aren't already read
-            if (msg.sender._id !== currentUserId && !msg.readBy.includes(currentUserId)) {
-              return {
-                ...msg,
-                readBy: [...msg.readBy, currentUserId]
-              }
-            }
-            return msg
-          })
-        })
-        
-        // Refresh conversations to update unread counts
-        fetchConversations()
-      } else {
-        console.error('Failed to mark messages as read:', response.status)
-      }
-    } catch (error) {
-      console.error('Error marking messages as read:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (currentUserId) {
-      fetchConversations()
-    }
-  }, [currentUserId])
-  
+  // Open a chat with a specific user
   const openChat = async (user: ChatUser) => {
-    console.log('Opening chat with user:', user)
     setActiveChat(user)
     setIsChatOpen(true)
     setIsChatBubbleOpen(false)
+    setError(null)
     
-    try {
-      console.log('All conversations:', conversations)
-      console.log('Looking for conversations with user ID:', user.id)
-      
-      const existingConversation = conversations.find((conv: any) => {
-        console.log('Checking conversation:', conv._id, 'with participants:', conv.participants)
-        return conv.participants.some((p: any) => p._id === user.id)
-      })
-      
-      console.log('Found existing conversation?', existingConversation ? 'Yes' : 'No')
-      
-      if (existingConversation) {
-        console.log('Setting active conversation to:', existingConversation._id)
-        setActiveConversation(existingConversation._id)
-        await fetchMessages(existingConversation._id)
-        await markMessagesAsRead(existingConversation._id)
-      } else {
-        console.log('No existing conversation found, starting with empty messages')
-        setActiveConversation(null)
-        setMessages([])
-      }
-    } catch (error) {
-      console.error('Error opening chat:', error)
-      setError('Failed to load chat history')
+    // Check if we already have a conversation with this user
+    if (conversations.length === 0) {
+      await refreshConversations()
+    }
+    
+    const existingConversation = conversations.find((conv: any) => {
+      return conv.participants && conv.participants.some((p: any) => p._id === user.id)
+    })
+    
+    if (existingConversation) {
+      setActiveConversation(existingConversation._id)
+      await fetchMessages(existingConversation._id)
+    } else {
+      // No existing conversation, create a new one by sending the first message
+      setActiveConversation(null)
+      setMessages([])
     }
   }
 
+  // Close the chat window
   const closeChat = () => {
     setIsChatOpen(false)
   }
 
+  // Minimize the chat window
   const minimizeChat = () => {
     setIsChatOpen(false)
     setIsChatBubbleOpen(true)
   }
 
+  // Maximize the chat window
   const maximizeChat = () => {
     setIsChatOpen(true)
     setIsChatBubbleOpen(false)
   }
 
+  // Toggle the chat bubble visibility
   const toggleChatBubble = () => {
-    setIsChatBubbleOpen((prev) => !prev)
+    setIsChatBubbleOpen(prev => !prev)
+  }
+
+  // Load conversations when the component mounts
+  useEffect(() => {
+    let isMounted = true;
+    
+    if (currentUserId && isMounted) {
+      // Use a function to fetch data to avoid dependency issues
+      const loadInitialData = async () => {
+        setLoadingConversations(true);
+        try {
+          await fetchConversations();
+        } finally {
+          if (isMounted) setLoadingConversations(false);
+        }
+      };
+      
+      loadInitialData();
+    }
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUserId]) // fetchConversations is intentionally omitted from dependencies
+
+  // Context value
+  const value = {
+    messages,
+    conversations,
+    activeChat,
+    isChatOpen,
+    isChatBubbleOpen,
+    unreadCount,
+    users,
+    getUserById,
+    sendMessage,
+    openChat,
+    closeChat,
+    minimizeChat,
+    maximizeChat,
+    toggleChatBubble,
+    refreshConversations,
+    loadingConversations,
+    loadingMessages,
+    error
   }
 
   return (
-    <ChatContext.Provider
-      value={{
-        messages,
-        conversations,
-        activeChat,
-        isChatOpen,
-        isChatBubbleOpen,
-        unreadCount,
-        users,
-        getUserById,
-        sendMessage,
-        openChat,
-        closeChat,
-        minimizeChat,
-        maximizeChat,
-        toggleChatBubble,
-        refreshConversations,
-        loadingConversations,
-        loadingMessages,
-        error
-      }}
-    >
+    <ChatContext.Provider value={value}>
       {children}
     </ChatContext.Provider>
   )
 }
 
+// Hook to use the chat context
 export function useChat() {
   const context = useContext(ChatContext)
   if (context === undefined) {
-    throw new Error("useChat must be used within a ChatProvider")
+    throw new Error('useChat must be used within a ChatProvider')
   }
   return context
 }

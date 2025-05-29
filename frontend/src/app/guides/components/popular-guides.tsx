@@ -38,10 +38,8 @@ const transformGuideData = (guide: Guide): DisplayGuide => {
     : "Guide Touristique"
     : "Guide Touristique";
 
-  // Déterminer la localisation principale du guide
-  const location = guide.coveredGovernorates && guide.coveredGovernorates.length > 0
-    ? guide.coveredGovernorates[0]
-    : "Tunisie";
+  // Utiliser une localisation générique pour tous les guides
+  const location = "Tunisie";
 
   return {
     id: guide._id,
@@ -49,7 +47,7 @@ const transformGuideData = (guide: Guide): DisplayGuide => {
     specialty,
     image: guide.profileImage || `/placeholder.svg?height=400&width=400&text=${guide.name}`,
     languages: guide.languages || ["Français"],
-    experience: `${guide.yearsOfExperience || 1} ans`,
+    experience: `${guide.yearsOfExperience || 1} ans d'expertise`,
     bio: guide.description || "Guide touristique passionné par la Tunisie et sa culture.",
     location,
     availability: "Disponible",
@@ -309,6 +307,13 @@ export default function PopularGuides() {
                                 </Badge>
                               </div>
                             </div>
+                            
+                            <div className="mt-3 flex justify-center">
+                              <div className="flex items-center text-slate-700">
+                                <Award className="w-5 h-5 mr-2 text-slate-500" />
+                                <span className="text-base font-medium">{guides[currentGuide].experience}</span>
+                              </div>
+                            </div>
                           </motion.div>
                         </div>
 
@@ -325,20 +330,6 @@ export default function PopularGuides() {
                             </div>
 
                             <p className="text-slate-600 italic text-sm">"{guides[currentGuide].bio}"</p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="flex items-center text-slate-700">
-                                <MapPin className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-base">{guides[currentGuide].location}</span>
-                              </div>
-
-                              <div className="flex items-center text-slate-700">
-                                <Award className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-base">{guides[currentGuide].experience}</span>
-                              </div>
-
-                              {/* Les éléments "Répond en 2h" et "Réservation flexible" ont été supprimés car ces informations ne sont pas disponibles dans la base de données */}
-                            </div>
 
                             <div>
                               <div className="flex items-center mb-3">
@@ -360,46 +351,31 @@ export default function PopularGuides() {
 
                             <div className="mt-8 flex flex-wrap gap-3">
                               <Button 
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center"
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center relative overflow-hidden group"
                                 onClick={() => {
-                                  // Fonction pour démarrer une conversation avec un guide
-                                  const handleContactGuide = (guide: DisplayGuide) => {
-                                    try {
-                                      // Refresh conversations first to ensure we have the latest data
-                                      refreshConversations().then(() => {
-                                        // Ouvrir le chat avec le guide sélectionné
-                                        openChat({
-                                          id: guide.id,
-                                          name: guide.name,
-                                          avatar: guide.image,
-                                          online: true
-                                        });
-                                      }).catch(error => {
-                                        console.error('Error refreshing conversations:', error);
-                                        // Still try to open chat even if refresh fails
-                                        openChat({
-                                          id: guide.id,
-                                          name: guide.name,
-                                          avatar: guide.image,
-                                          online: true
-                                        });
-                                      });
-                                    } catch (error) {
-                                      console.error('Error contacting guide:', error);
-                                      // Fallback - open chat directly
-                                      openChat({
-                                        id: guide.id,
-                                        name: guide.name,
-                                        avatar: guide.image,
-                                        online: true
-                                      });
-                                    }
-                                  }
-                                  handleContactGuide(guides[currentGuide]);
+                                  // Simplify the contact guide function to be more direct
+                                  console.log('Opening chat with guide:', guides[currentGuide].name);
+                                  
+                                  // Direct approach - open chat immediately
+                                  openChat({
+                                    id: guides[currentGuide].id,
+                                    name: guides[currentGuide].name,
+                                    avatar: guides[currentGuide].image,
+                                    online: true
+                                  });
+                                  
+                                  // Then refresh conversations in the background
+                                  refreshConversations().catch(error => {
+                                    console.log('Background refresh error:', error);
+                                    // Non-critical error, chat is already open
+                                  });
                                 }}
                               >
-                                Contacter
-                                <Mail className="ml-2 h-5 w-5" />
+                                <span className="relative z-10 flex items-center">
+                                  Contacter
+                                  <Mail className="ml-2 h-5 w-5" />
+                                </span>
+                                <span className="absolute inset-0 bg-blue-700 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
                               </Button>
 
                               <Button 
@@ -431,7 +407,9 @@ export default function PopularGuides() {
           >
             <Button 
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300 inline-flex items-center"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 window.location.href = '/guides';
               }}
             >

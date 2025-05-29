@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import HandWrittenTitle from "@/components/ui/hand-written-title"
+import authService from '@/services/authService'
 
 interface BasicInfoStepProps {
   name: string
@@ -122,17 +123,23 @@ export default function BasicInfoStep({
   }
 
   const handleNext = async () => {
-    // Reset all errors
-    setError("")
-    setNameError("")
-    setEmailError("")
-    setPasswordError("")
-    setTermsError("")
-
-    // Validate all fields
     let hasError = false
+    setError("")
+    setEmailError("")
+    setNameError("")
+    setPasswordError("")
 
-    if (!name.trim()) {
+    // Validate email
+    if (!email) {
+      setEmailError("Veuillez entrer votre adresse email")
+      hasError = true
+    } else if (!isValidEmail(email)) {
+      setEmailError("Veuillez entrer une adresse email valide")
+      hasError = true
+    }
+
+    // Validate name
+    if (!name) {
       setNameError("Veuillez entrer votre nom")
       hasError = true
     } else if (name.length < 3) {
@@ -140,14 +147,7 @@ export default function BasicInfoStep({
       hasError = true
     }
 
-    if (!email.trim()) {
-      setEmailError("Veuillez entrer votre email")
-      hasError = true
-    } else if (!isValidEmail(email)) {
-      setEmailError("Veuillez entrer une adresse email valide")
-      hasError = true
-    }
-
+    // Validate password
     if (!password) {
       setPasswordError("Veuillez entrer un mot de passe")
       hasError = true
@@ -161,19 +161,24 @@ export default function BasicInfoStep({
       return
     }
     
-    // Check if email already exists
+    // Check if email already exists using authService
     try {
-      const response = await fetch('http://localhost:5001/api/auth/check-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
+      console.log("Vérification de l'email via authService:", email);
       
-      const data = await response.json();
+      // Utiliser authService pour vérifier l'email
+      await authService.checkEmail(email);
       
-      if (!response.ok) {
+      console.log("Email disponible, passage à l'étape suivante");
+      // If we get here, the email is available
+      onNext();
+      
+    } catch (error: any) {
+      console.error("Erreur lors de la vérification de l'email:", error);
+      
+      // Gérer les différents types d'erreurs
+      if (error.response && error.response.status === 400) {
+        const data = error.response.data;
+        
         if (data.error && data.error.includes('email')) {
           setEmailError("Cette adresse email est déjà utilisée")
           setError("Veuillez utiliser une autre adresse email")
@@ -186,16 +191,15 @@ export default function BasicInfoStep({
           return;
         }
         
-        // Generic error
+        // Erreur générique
         setError(data.error || "Une erreur est survenue lors de la vérification")
         return;
       }
-    } catch (error) {
-      console.error("Error checking email:", error);
-      // Continue anyway if the check fails - we'll validate again on final submission
+      
+      // Erreur de connexion ou autre erreur
+      setError(error.message || "Erreur de connexion au serveur. Veuillez réessayer plus tard.");
+      return;
     }
-
-    onNext()
   }
 
   return (

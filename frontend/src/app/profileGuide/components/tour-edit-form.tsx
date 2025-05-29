@@ -38,6 +38,17 @@ export default function TourEditForm({ tour, onSave, onCancel }: TourEditFormPro
           title: "Tour mis à jour",
           description: "Les modifications ont été enregistrées avec succès.",
         })
+        
+        // Dispatch an event to notify that a tour status has changed
+        const tourStatusEvent = new CustomEvent('tourStatusChanged', {
+          detail: { tourId: editingTour._id || editingTour.id, status: 'updated' }
+        })
+        window.dispatchEvent(tourStatusEvent)
+        
+        // Close the dialog
+        onCancel()
+        
+        // Pass the updated tour to the parent component
         onSave(result)
       }
     } catch (error) {

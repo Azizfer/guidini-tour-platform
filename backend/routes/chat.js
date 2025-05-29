@@ -3,12 +3,22 @@ const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Tour = require('../models/Tour');
 
-// Initialize Gemini API
+// Initialize Gemini API with improved error handling
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
   console.error('GEMINI_API_KEY is not set in environment variables');
+} else {
+  console.log('Gemini API key is configured');
 }
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+
+// Create the Gemini client with error handling
+let genAI = null;
+try {
+  genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+  console.log('Gemini client initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Gemini client:', error.message);
+}
 
 // Cache tours for 5 minutes to reduce database calls
 let toursCache = {
@@ -23,16 +33,23 @@ const getAvailableTours = async () => {
   }
 
   try {
-    const tours = await Tour.find({ isPublic: true })
-      .select('title location duration price')
-      .limit(5)
+    // Get active tours with more details
+    const activeTours = await Tour.find({ tourStatus: 'active' })
+      .select('title location duration price date time category maxParticipants bookings')
+      .sort({ date: 1 }) // Sort by nearest date first
+      .limit(8)
       .lean();
 
-    if (!tours || tours.length === 0) return "";
+    if (!activeTours || activeTours.length === 0) return "Actuellement, il n'y a pas de tours actifs disponibles.";
 
-    let toursInfo = "\nVoici quelques activités disponibles:\n";
-    tours.forEach((tour, index) => {
-      toursInfo += `${index + 1}. "${tour.title}" - ${tour.location} - ${tour.duration} - ${tour.price} TND\n`;
+    let toursInfo = "\nVoici les tours actifs disponibles:\n";
+    activeTours.forEach((tour, index) => {
+      // Calculate available spots
+      const availableSpots = tour.maxParticipants - tour.bookings;
+      const spotsInfo = availableSpots > 0 ? `${availableSpots} places disponibles` : "Complet";
+      
+      toursInfo += `${index + 1}. "${tour.title}" - ${tour.location} - ${tour.duration}\n`;
+      toursInfo += `   📅 ${tour.date} à ${tour.time} - 💰 ${tour.price} TND - 🏷️ ${tour.category} - 👥 ${spotsInfo}\n`;
     });
 
     // Update cache
@@ -55,22 +72,24 @@ const getSystemPrompt = async () => {
 - Local culture and traditions
 - Tunisian cuisine
 - Guidini platform services
+
+When users ask about available tours, active tours, or what activities they can join, always provide the current list of active tours from the information below. If they ask for specific types of tours (like adventure tours or cultural tours), filter the list mentally and only show relevant tours from the categories they're interested in.
+
+If a user asks about booking a tour, tell them they can click on the tour details on the Activities page and use the reservation button there.
+
 ${toursInfo}`;
 };
 
-// Validate Gemini response
+// Validate and extract text from Gemini 1.5 Pro response
 const validateGeminiResponse = (response) => {
   try {
-    // Log the response structure for debugging
-    console.log('Gemini response structure:', JSON.stringify(response, null, 2));
-    
-    // Handle different response formats based on Gemini version
+    // Handle null or undefined response
     if (!response) {
       throw new Error('Invalid Gemini response: response is null or undefined');
     }
     
-    // For Gemini 2.5
-    if (response.candidates && response.candidates.length > 0) {
+    // Handle Gemini 1.5 Pro response format (primary format)
+    if (response.candidates && Array.isArray(response.candidates) && response.candidates.length > 0) {
       const candidate = response.candidates[0];
       if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
         const text = candidate.content.parts[0].text;
@@ -80,22 +99,49 @@ const validateGeminiResponse = (response) => {
       }
     }
     
-    // For older Gemini versions
-    if (response.response && typeof response.response.text === 'function') {
-      const text = response.response.text();
-      if (text && typeof text === 'string') {
-        return text;
+    // Handle chat response format
+    if (response.response) {
+      // Handle function response
+      if (typeof response.response.text === 'function') {
+        const text = response.response.text();
+        if (text && typeof text === 'string') {
+          return text;
+        }
+      }
+      
+      // Handle direct text property
+      if (typeof response.response.text === 'string') {
+        return response.response.text;
+      }
+      
+      // Handle parts array
+      if (response.response.parts && Array.isArray(response.response.parts)) {
+        const text = response.response.parts.map(part => part.text).join('');
+        if (text) {
+          return text;
+        }
       }
     }
     
-    // Try other possible response formats
+    // Handle direct text property
     if (response.text && typeof response.text === 'string') {
       return response.text;
     }
     
-    if (response.content && response.content.parts && response.content.parts.length > 0) {
-      const text = response.content.parts[0].text;
-      if (text && typeof text === 'string') {
+    // Handle content with parts
+    if (response.content && response.content.parts && Array.isArray(response.content.parts)) {
+      const text = response.content.parts.map(part => part.text).join('');
+      if (text) {
+        console.log('Successfully extracted text from content.parts array');
+        return text;
+      }
+    }
+    
+    // Last resort: try to convert the entire response to a string
+    if (response.toString && typeof response.toString === 'function') {
+      const text = response.toString();
+      if (text && text !== '[object Object]') {
+        console.log('Using toString() as last resort');
         return text;
       }
     }
@@ -155,13 +201,15 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Configure for Gemini 1.5 Flash (confirmed working with your API key)
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-preview-0417",
+      model: "gemini-1.5-flash",
       generationConfig: {
         temperature: 0.7,
-        topP: 0.8,
+        topP: 0.9,
         topK: 40,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 1024, // Reduced for Flash model
+        responseMimeType: "text/plain",
       },
       safetySettings: [
         {
@@ -171,30 +219,53 @@ router.post('/', async (req, res) => {
         {
           category: "HARM_CATEGORY_HATE_SPEECH",
           threshold: "BLOCK_ONLY_HIGH"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_ONLY_HIGH"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_ONLY_HIGH"
         }
       ]
     });
 
+    // Get system prompt with available tours
     const systemPrompt = await getSystemPrompt();
-    const chat = model.startChat({
-      history: [{
+    
+    // Create history with system prompt and user message
+    const history = [
+      {
         role: "user",
         parts: [{ text: systemPrompt }]
-      }],
-    });
-
-    // Pour Gemini 2.5, la méthode d'envoi de messages est différente
-    console.log('Sending message to Gemini 2.5:', message);
+      },
+      {
+        role: "model",
+        parts: [{ text: "Je comprends. Je suis l'assistant virtuel de Guidini pour le tourisme en Tunisie. Comment puis-je vous aider aujourd'hui?" }]
+      }
+    ];
     
-    // Essayer d'abord avec la nouvelle méthode pour Gemini 2.5
+    // Add user message history if provided
+    if (req.body.history && Array.isArray(req.body.history)) {
+      req.body.history.forEach(msg => {
+        history.push({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }]
+        });
+      });
+    }
+    
+    // Start chat session with history
+    const chat = model.startChat({ history });
+    
+    // Try with chat method first (preferred for conversations)
     let result;
     try {
-      result = await model.generateContent(message);
-      console.log('Generated content with Gemini 2.5');
-    } catch (genError) {
-      console.log('Error with generateContent, trying chat method:', genError.message);
-      // Fallback à l'ancienne méthode
       result = await chat.sendMessage(message);
+    } catch (chatError) {
+      // Fallback to direct content generation
+      result = await model.generateContent(message);
     }
     
     const responseText = validateGeminiResponse(result);

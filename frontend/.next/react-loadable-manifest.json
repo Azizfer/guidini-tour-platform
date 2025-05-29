@@ -5,22 +5,18 @@
       "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   },
-  "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
-    "id": "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app",
+  "app\\carte-interactive\\Interactive-map.tsx -> react-leaflet": {
+    "id": "app\\carte-interactive\\Interactive-map.tsx -> react-leaflet",
+    "files": []
+  },
+  "components\\chat-wrapper.tsx -> ./chat-interface": {
+    "id": "components\\chat-wrapper.tsx -> ./chat-interface",
     "files": [
-      "static/chunks/node_modules_next_dist_pages__app_js.js"
+      "static/chunks/_app-pages-browser_src_components_chat-interface_tsx.js"
     ]
   },
-  "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
-    "id": "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error",
-    "files": [
-      "static/chunks/node_modules_next_dist_pages__error_js.js"
-    ]
-  },
-  "components\\chat-wrapper.tsx -> ./Chat-Interface": {
-    "id": "components\\chat-wrapper.tsx -> ./Chat-Interface",
-    "files": [
-      "static/chunks/_app-pages-browser_src_components_Chat-Interface_tsx.js"
-    ]
+  "services\\guideStatsService.ts -> ./toursService": {
+    "id": "services\\guideStatsService.ts -> ./toursService",
+    "files": []
   }
 }

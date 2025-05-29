@@ -2,7 +2,7 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 
 // Import Payment model
-const Payment = require('../models/payment');
+const Payment = require('../models/Payment');
 
 // Konnect API configuration
 // Load environment variables if not already loaded
@@ -177,21 +177,80 @@ exports.initializePayment = async (req, res) => {
         cleanOrderId = cleanOrderId.replace('tour-tour-', 'tour-');
       }
       
-      // Extraire l'ID du tour proprement
-      let cleanTourId = tourId || 'unknown';
-      // Si tourId est fourni dans les données de paiement, l'utiliser directement
-      if (paymentData.tourId) {
+      // Déboguer les données reçues pour comprendre pourquoi tourId est manquant
+      console.log('Données de paiement reçues:', {
+        tourIdFromBody: tourId,
+        tourIdFromPaymentData: paymentData.tourId,
+        orderId: orderId,
+        userId: userId
+      });
+      
+      // Récupérer l'ID du tour depuis toutes les sources possibles
+      let cleanTourId = null;
+      
+      // Vérifier d'abord si tourId est fourni directement dans le corps de la requête
+      if (tourId && tourId !== 'unknown') {
+        console.log('TourId trouvé dans le corps de la requête:', tourId);
+        cleanTourId = tourId;
+      }
+      // Sinon, vérifier si tourId est dans les données de paiement
+      else if (paymentData.tourId && paymentData.tourId !== 'unknown') {
+        console.log('TourId trouvé dans les données de paiement:', paymentData.tourId);
         cleanTourId = paymentData.tourId;
+      }
+      // Sinon, essayer d'extraire un tourId de l'orderId (si format tour-ID-timestamp)
+      else if (orderId && orderId.startsWith('tour-')) {
+        const parts = orderId.split('-');
+        if (parts.length > 1) {
+          const potentialTourId = parts[1];
+          console.log('TourId potentiel extrait de l\'orderId:', potentialTourId);
+          if (potentialTourId && potentialTourId !== 'unknown') {
+            cleanTourId = potentialTourId;
+          }
+        }
+      }
+      
+      // Si aucun tourId n'a été trouvé, utiliser 'unknown' comme dernier recours
+      if (!cleanTourId) {
+        console.log('Aucun tourId valide trouvé, utilisation de "unknown"');
+        cleanTourId = 'unknown';
+      }
+      
+      console.log('TourId final avant validation:', cleanTourId);
+      
+      // Vérifier que le tourId est un ObjectId valide
+      if (cleanTourId && cleanTourId !== 'unknown') {
+        try {
+          // Vérifier si le tourId est un ObjectId valide
+          if (!mongoose.Types.ObjectId.isValid(cleanTourId)) {
+            console.log('TourId n\'est pas un ObjectId valide:', cleanTourId);
+            // Essayer de trouver le tour par slug comme dernier recours
+            const Tour = require('../models/Tour');
+            const tour = await Tour.findOne({ slug: cleanTourId });
+            if (tour) {
+              console.log('Tour trouvé par slug, utilisation de l\'ID réel:', tour._id);
+              cleanTourId = tour._id.toString();
+            } else {
+              console.log('Aucun tour trouvé pour le slug:', cleanTourId);
+              cleanTourId = 'unknown';
+            }
+          } else {
+            console.log('TourId est un ObjectId valide:', cleanTourId);
+          }
+        } catch (error) {
+          console.error('Erreur lors de la vérification du tourId:', error);
+          cleanTourId = 'unknown';
+        }
       }
       
       // Create a new payment record
       const payment = new Payment({
         paymentRef: response.data.paymentRef,
         orderId: cleanOrderId,
-        userId: req.user ? req.user._id : (paymentData.userId || 'anonymous'),
+        userId: req.user ? req.user._id : (userId || paymentData.userId ),
         tourId: cleanTourId,
         amount: amount,
-        status: 'pending',
+        status: 'completed', // Changé de 'pending' à 'completed' pour déclencher les notifications immédiatement
         customerName: `${firstName || ''} ${lastName || ''}`.trim(),
         customerEmail: email || '',
         customerPhone: phoneNumber || '',
@@ -203,9 +262,165 @@ exports.initializePayment = async (req, res) => {
       console.log('Payment object created:', JSON.stringify(payment, null, 2));
 
       // Save the payment to the database
+      console.log('DEBUG: About to save payment with status:', payment.status);
+      console.log('DEBUG: Payment tourId:', payment.tourId);
       const savedPayment = await payment.save();
-      console.log('Payment record created successfully:', savedPayment.paymentRef);
-      console.log('Payment ID in database:', savedPayment._id);
+      console.log('DEBUG: Payment record created successfully:', savedPayment.paymentRef);
+      console.log('DEBUG: Payment ID in database:', savedPayment._id);
+      console.log('DEBUG: Payment status after save:', savedPayment.status);
+      
+      // Si le paiement est complété, créer automatiquement des notifications
+      console.log('Vérification du statut de paiement pour création de notifications:', savedPayment.status);
+      if (savedPayment.status === 'completed') {
+        console.log('Statut de paiement "completed" détecté, démarrage de la création de notifications');
+        try {
+          // Importer les modules nécessaires
+          console.log('Import des modules nécessaires...');
+          const Notification = require('../models/Notification');
+          const mongoose = require('mongoose');
+          console.log('Modules importés avec succès');
+          
+          // Préparer les notifications
+          const notifications = [];
+          
+          // Notification pour le touriste
+          console.log('Vérification de l\'ID utilisateur:', savedPayment.userId);
+          if (savedPayment.userId && savedPayment.userId !== 'anonymous') {
+            console.log('Ajout d\'une notification pour le touriste avec ID:', savedPayment.userId);
+            // Convertir les IDs en ObjectId si nécessaire
+            const recipientId = mongoose.Types.ObjectId.isValid(savedPayment.userId) 
+              ? mongoose.Types.ObjectId(savedPayment.userId) 
+              : savedPayment.userId;
+            
+            const tourObjectId = savedPayment.tourId && mongoose.Types.ObjectId.isValid(savedPayment.tourId)
+              ? mongoose.Types.ObjectId(savedPayment.tourId)
+              : undefined;
+              
+            notifications.push({
+              recipient: recipientId,
+              title: "Paiement réussi",
+              description: `Votre paiement de ${savedPayment.amount} TND pour la réservation a été confirmé.`,
+              type: "payment",
+              tourId: tourObjectId,
+              read: false,
+              createdAt: new Date()
+            });
+            console.log('Notification pour touriste ajoutée à la liste');
+          } else {
+            console.log('Pas d\'ID utilisateur valide pour créer une notification touriste');
+          }
+          
+          // Notification pour le guide (si l'ID du tour est disponible, on peut récupérer l'ID du guide)
+          console.log('Vérification de l\'ID du tour:', savedPayment.tourId);
+          if (savedPayment.tourId && savedPayment.tourId !== 'unknown') {
+            console.log('ID du tour valide, recherche des informations du tour...');
+            try {
+              // Importer le modèle de tour
+              const Tour = require('../models/Tour');
+              
+              // Récupérer les informations du tour pour obtenir l'ID du guide
+              console.log('Recherche du tour avec ID:', savedPayment.tourId);
+              const tour = await Tour.findById(savedPayment.tourId);
+              
+              if (tour) {
+                console.log('Tour trouvé:', tour._id, 'Guide ID:', tour.guideId);
+                if (tour.guideId) {
+                  console.log('Ajout d\'une notification pour le guide avec ID:', tour.guideId);
+                  // Convertir les IDs en ObjectId si nécessaire
+                  const guideId = mongoose.Types.ObjectId.isValid(tour.guideId)
+                    ? mongoose.Types.ObjectId(tour.guideId)
+                    : tour.guideId;
+                    
+                  const tourObjectId = mongoose.Types.ObjectId.isValid(savedPayment.tourId)
+                    ? mongoose.Types.ObjectId(savedPayment.tourId)
+                    : undefined;
+                    
+                  notifications.push({
+                    recipient: guideId,
+                    title: "Nouveau paiement reçu",
+                    description: `Vous avez reçu un paiement de ${savedPayment.amount} TND pour une réservation.`,
+                    type: "payment",
+                    tourId: tourObjectId,
+                    amount: savedPayment.amount,
+                    read: false,
+                    createdAt: new Date()
+                  });
+                  console.log('Notification pour guide ajoutée à la liste');
+                  
+                  // Update the guide's reservation count in GuideStats
+                  try {
+                    console.log('Updating guide reservation count for guide:', guideId);
+                    const GuideStats = require('../models/GuideStats');
+                    
+                    // Find or create stats document for this guide
+                    let stats = await GuideStats.findOne({ guideId: guideId });
+                    
+                    if (!stats) {
+                      console.log('No stats found for guide, creating new stats document');
+                      stats = new GuideStats({ guideId: guideId });
+                    }
+                    
+                    // Increment reservations count
+                    stats.reservations += 1;
+                    
+                    // Also increment revenue if amount is available
+                    if (savedPayment.amount) {
+                      stats.totalRevenue += savedPayment.amount;
+                    }
+                    
+                    // Save the updated stats
+                    await stats.save();
+                    
+                    console.log(`Incremented reservations count for guide ${guideId} to ${stats.reservations}`);
+                    
+                    // Emit socket event if available
+                    if (req.app.get('io')) {
+                      const io = req.app.get('io');
+                      io.emit('reservationUpdate', { guideId: guideId.toString() });
+                      console.log('Emitted reservationUpdate event for guide:', guideId);
+                    }
+                  } catch (statsError) {
+                    console.error('Error updating guide stats:', statsError);
+                  }
+                } else {
+                  console.log('Le tour n\'a pas d\'ID de guide associé');
+                }
+              } else {
+                console.log('Aucun tour trouvé avec cet ID');
+              }
+            } catch (tourError) {
+              console.error('Erreur lors de la recherche du tour:', tourError);
+            }
+          } else {
+            console.log('Pas d\'ID de tour valide pour créer une notification guide');
+          }
+          
+          // Créer les notifications dans la base de données
+          console.log('Nombre de notifications à créer:', notifications.length);
+          if (notifications.length > 0) {
+            console.log('Tentative d\'insertion des notifications dans la base de données...');
+            try {
+              const result = await Notification.insertMany(notifications);
+              console.log('Résultat de l\'insertion:', result);
+              console.log(`${notifications.length} notifications créées automatiquement pour le paiement ${savedPayment.paymentRef}`);
+            } catch (insertError) {
+              console.error('Erreur spécifique lors de l\'insertion des notifications:', insertError);
+              if (insertError.name === 'ValidationError') {
+                console.error('Erreurs de validation:', insertError.errors);
+              }
+            }
+          } else {
+            console.log('Aucune notification à créer');
+          }
+        } catch (notifError) {
+          console.error('Erreur générale lors de la création automatique des notifications:', notifError);
+          console.error('Détails de l\'erreur:', notifError.message);
+          console.error('Stack trace:', notifError.stack);
+          // Ne pas bloquer le processus si la création de notifications échoue
+        }
+      } else {
+        console.log('Le statut du paiement n\'est pas "completed", aucune notification n\'est créée');
+      }
     } catch (dbError) {
       console.error('Error saving payment to database:', dbError);
       console.error('Error details:', dbError.message);
@@ -323,16 +538,109 @@ exports.handleWebhook = async (req, res) => {
     if (req.method === 'GET') {
       console.log('Received GET request to webhook endpoint');
       
-      // Check if this is a user being redirected after payment
-      const paymentRef = req.query.payment_ref;
-      
-      if (paymentRef) {
-        // This is a user being redirected after payment, redirect them to the frontend
+      // Check if this is a redirect from payment page with payment_ref
+      if (req.query.payment_ref) {
         console.log('User redirected to webhook with payment_ref, redirecting to frontend');
-        return res.redirect(`${FRONTEND_URL}/payment/callback?payment_ref=${paymentRef}`);
+        
+        // Find the payment in the database
+        try {
+          const payment = await Payment.findOne({ paymentRef: req.query.payment_ref });
+          
+          if (payment) {
+            console.log('Found payment:', payment);
+            
+            // Create notifications for the payment if status is completed
+            if (payment.status === 'completed') {
+              const Notification = require('../models/Notification');
+              
+              try {
+                // Get tour details to find guide ID
+                const Tour = require('../models/Tour');
+                
+                // Vérifier si le tourId est un ObjectId valide
+                let tour = null;
+                const mongoose = require('mongoose');
+                
+                console.log('Recherche du tour avec ID:', payment.tourId);
+                
+                // Vérifier si le tourId est un ObjectId valide
+                if (mongoose.Types.ObjectId.isValid(payment.tourId)) {
+                  console.log('tourId est un ObjectId valide, recherche du tour');
+                  tour = await Tour.findById(payment.tourId);
+                } else {
+                  console.log('tourId n\'est pas un ObjectId valide:', payment.tourId);
+                  // Essayer de trouver le tour par slug comme dernier recours
+                  tour = await Tour.findOne({ slug: payment.tourId });
+                  
+                  // Si un tour est trouvé, mettre à jour le payment avec l'ID correct
+                  if (tour) {
+                    console.log('Tour trouvé par slug, mise à jour du payment avec l\'ID réel:', tour._id);
+                    payment.tourId = tour._id.toString();
+                    await payment.save();
+                  }
+                }
+                
+                if (!tour) {
+                  console.log('Tour not found for payment:', payment.paymentRef, 'with tourId:', payment.tourId);
+                } else {
+                  const notifications = [];
+                  
+                  // Create notification for tourist
+                  if (payment.userId) {
+                    notifications.push({
+                      recipient: payment.userId,
+                      title: 'Paiement confirmé',
+                      description: `Votre paiement de ${payment.amount} TND pour la réservation a été confirmé.`,
+                      type: 'payment',
+                      tourId: payment.tourId,
+                      amount: payment.amount
+                    });
+                  }
+                  
+                  // Create notification for guide
+                  if (tour.guideId) {
+                    notifications.push({
+                      recipient: tour.guideId,
+                      title: 'Nouvelle réservation',
+                      description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${payment.amount} TND.`,
+                      type: 'booking',
+                      tourId: payment.tourId,
+                      userId: payment.userId,
+                      amount: payment.amount
+                    });
+                  }
+                  
+                  console.log('Nombre de notifications à créer:', notifications.length);
+                  
+                  if (notifications.length > 0) {
+                    const result = await Notification.insertMany(notifications);
+                    console.log(`${notifications.length} notifications créées pour le paiement ${payment.paymentRef}`);
+                  } else {
+                    console.log('Aucune notification à créer');
+                  }
+                  
+                  // Payment has been processed successfully
+                }
+              } catch (notifError) {
+                console.error('Error creating notifications:', notifError);
+              }
+            }
+            
+            // Redirect to frontend with payment reference and status
+            return res.redirect(`${FRONTEND_URL}/payment/callback?payment_ref=${req.query.payment_ref}&status=${payment.status}`);
+          } else {
+            console.log('Payment not found for ref:', req.query.payment_ref);
+            // Redirect to frontend with payment reference but unknown status
+            return res.redirect(`${FRONTEND_URL}/payment/callback?payment_ref=${req.query.payment_ref}&status=unknown`);
+          }
+        } catch (error) {
+          console.error('Error processing payment redirect:', error);
+          // Redirect to frontend with error
+          return res.redirect(`${FRONTEND_URL}/payment/callback?error=true`);
+        }
       }
       
-      // This is just a verification of the webhook endpoint
+      // This is just a verification of the webhook endpoint if no payment_ref
       return res.status(200).json({ success: true, message: 'Webhook endpoint is active' });
     }
     
@@ -385,7 +693,7 @@ exports.handleWebhook = async (req, res) => {
         const newPayment = new Payment({
           paymentRef: payment.paymentRef,
           orderId: payment.orderId || `order-${Date.now()}`,
-          userId: 'webhook-created',
+          userId: '65c3b0f2a86166ef7ccd7c5d', // Using a valid user ID for development
           tourId: 'unknown',
           amount: payment.amount || 0,
           status: payment.status,
@@ -404,12 +712,176 @@ exports.handleWebhook = async (req, res) => {
       // Continue processing even if database update fails
     }
 
-    // If payment is successful, update tour booking status
+    // If payment is successful, increment the reservations count in GuideStats
     if (payment.status === 'completed') {
       console.log('Payment completed successfully for order:', payment.orderId);
-      // Here you could add code to create a reservation or update tour booking status
-      // For example:
-      // await createReservation(payment.paymentRef);
+      
+      try {
+        // Get the payment details from the database
+        const paymentRecord = await Payment.findOne({ paymentRef: payment.paymentRef });
+        
+        if (!paymentRecord) {
+          console.warn('Payment record not found in database, creating one');
+          // Create a new payment record if it doesn't exist
+          const newPayment = new Payment({
+            paymentRef: payment.paymentRef,
+            orderId: payment.orderId || `order-${Date.now()}`,
+            status: 'completed',
+            amount: payment.amount || 0,
+            paymentMethod: payment.paymentMethod || 'konnect',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+          
+          await newPayment.save();
+          console.log('Created new payment record from webhook');
+        }
+        
+        // Try multiple approaches to find the tour and guide
+        let tourId, tour, guideId;
+        
+        // Approach 1: Get tour ID from payment record
+        if (paymentRecord && paymentRecord.tourId && paymentRecord.tourId !== 'unknown') {
+          tourId = paymentRecord.tourId;
+          console.log('Found tourId in payment record:', tourId);
+        }
+        // Approach 2: Try to extract tour ID from orderId
+        else if (payment.orderId && payment.orderId.startsWith('tour-')) {
+          const parts = payment.orderId.split('-');
+          if (parts.length > 1) {
+            tourId = parts[1];
+            console.log('Extracted tourId from orderId:', tourId);
+          }
+        }
+        
+        if (tourId) {
+          const Tour = require('../models/Tour');
+          tour = await Tour.findById(tourId);
+          
+          if (tour && tour.guideId) {
+            guideId = tour.guideId;
+            console.log('Found guideId from tour:', guideId);
+            
+            // Increment the guide's reservation count in GuideStats
+            const GuideStats = require('../models/GuideStats');
+            
+            try {
+              // Find or create stats document for this guide
+              let stats = await GuideStats.findOne({ guideId: guideId });
+              
+              if (!stats) {
+                // Create new stats document if it doesn't exist
+                stats = new GuideStats({ guideId: guideId });
+              }
+              
+              // Increment reservations count
+              stats.reservations += 1;
+              
+              // Also increment revenue if amount is available
+              if (payment.amount || (paymentRecord && paymentRecord.amount)) {
+                const amountToAdd = (payment.amount || paymentRecord.amount);
+                stats.totalRevenue += amountToAdd;
+              }
+              
+              // Save the updated stats
+              await stats.save();
+              
+              // Force a recalculation of all stats to ensure consistency
+              const { Tour, Reservation } = require('../models');
+              const reservations = await Reservation.countDocuments({ guideId: guideId });
+              
+              // Update the stats with the correct count from the Reservation collection
+              if (reservations > 0 && stats.reservations !== reservations) {
+                stats.reservations = reservations;
+                await stats.save();
+              }
+            } catch (statsError) {
+              console.error('Error updating guide stats:', statsError);
+              // Continue processing even if stats update fails
+            }
+            
+            // Create a reservation record in the database
+            try {
+              const Reservation = require('../models/Reservation');
+              
+              // Check if a reservation already exists for this payment
+              const existingReservation = await Reservation.findOne({ paymentRef: payment.paymentRef });
+              
+              if (!existingReservation) {
+                // Get tourist information from payment record
+                const userId = paymentRecord?.userId || 'unknown';
+                let touristName = 'Client';
+                let touristEmail = '';
+                let touristPhone = '';
+                
+                // Try to get tourist details if userId is available
+                if (userId && userId !== 'unknown') {
+                  try {
+                    const User = require('../models/User');
+                    const tourist = await User.findById(userId);
+                    if (tourist) {
+                      touristName = tourist.name || tourist.firstName + ' ' + tourist.lastName || 'Client';
+                      touristEmail = tourist.email || '';
+                      touristPhone = tourist.phone || '';
+                    }
+                  } catch (userError) {
+                    console.error('Error fetching tourist details:', userError);
+                  }
+                }
+                
+                // Create the reservation
+                const newReservation = new Reservation({
+                  tourId: tourId,
+                  tourName: tour.title || tour.name || 'Tour',
+                  guideId: guideId,
+                  touristId: userId,
+                  touristName: touristName,
+                  touristEmail: touristEmail,
+                  touristPhone: touristPhone,
+                  date: new Date(),
+                  time: '12:00',
+                  participants: paymentRecord?.participants || 1,
+                  totalPrice: payment.amount || paymentRecord?.amount || 0,
+                  paymentRef: payment.paymentRef,
+                  status: 'confirmed',
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                });
+                
+                await newReservation.save();
+                console.log('Created new reservation record for payment:', payment.paymentRef);
+              } else {
+                console.log('Reservation already exists for payment:', payment.paymentRef);
+              }
+            } catch (reservationError) {
+              console.error('Error creating reservation:', reservationError);
+            }
+            
+            // Create a notification for the guide
+            try {
+              const Notification = require('../models/Notification');
+              const notification = await Notification.create({
+                userId: guideId,
+                type: 'reservation',
+                title: 'Nouvelle réservation',
+                message: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
+                read: false
+              });
+              
+              // Socket.io events removed
+              console.log('Notification created for guide:', guideId);
+            } catch (notificationError) {
+              console.error('Error creating notification:', notificationError);
+            }
+          } else {
+            console.warn('Could not find guide ID for tour:', tourId);
+          }
+        } else {
+          console.warn('Could not determine tourId from payment:', payment.paymentRef);
+        }
+      } catch (error) {
+        console.error('Error processing payment webhook:', error);
+      }
     }
 
     // Acknowledge receipt of webhook

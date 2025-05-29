@@ -37,10 +37,10 @@ export default function PaymentVerification() {
           userId 
         })
 
-        // Create notifications for both tourist and guide
-        if (amount > 0 && tourId && (guideId || userId)) {
-          console.log('Creating payment notifications...')
-          // Create notifications for both tourist and guide
+        // Create notification only for the guide, not for the tourist
+        if (amount > 0 && tourId && guideId) {
+          console.log('Creating payment notification for guide...')
+          // Only create notification for the guide
           const result = await notificationService.createPaymentNotification(
             tourId,
             tourTitle,

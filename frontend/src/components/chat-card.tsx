@@ -1,10 +1,9 @@
 "use client"
 
-import type React from "react"
 import { useRef, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Minus, X, Send, Paperclip, Smile, Loader2 } from "lucide-react"
+import { Minus, X, Send, Loader2, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import ChatBubble from "./chat-bubble"
@@ -23,7 +22,7 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Get current user ID from the JWT token
+  // Get current user ID from JWT token
   const getCurrentUserId = (): string => {
     try {
       const token = localStorage.getItem("token")
@@ -35,7 +34,7 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
           atob(base64)
             .split("")
             .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-            .join(""),
+            .join("")
         )
 
         const payload = JSON.parse(jsonPayload)
@@ -45,18 +44,34 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
       console.error("Error getting current user ID:", e)
     }
 
-    // Fallback to hardcoded ID if token parsing fails
-    return "682e10803651e668c119fbaf"
+    // No fallback ID - user must be logged in
+    return ""
   }
 
   const currentUserId = getCurrentUserId()
 
-  // Add debugging logs
+  // Process messages to determine which ones are sequential (from the same sender)
+  const processedMessages = messages.map((message, index) => {
+    // Check if this message is from the same sender as the previous one
+    const isSequential = index > 0 && 
+      ((message.sender?._id === messages[index - 1].sender?._id) || 
+       (message._id?.startsWith('temp-') && messages[index - 1]._id?.startsWith('temp-')));
+    
+    return {
+      ...message,
+      isSequential
+    };
+  });
+
+  // Focus input when component mounts and when messages change
   useEffect(() => {
-    console.log("ChatCard - Active Chat:", activeChat)
-    console.log("ChatCard - Messages:", messages)
-    console.log("ChatCard - Loading Messages:", loadingMessages)
-  }, [activeChat, messages, loadingMessages])
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 100)
+    
+    // Also scroll to bottom when messages change
+    scrollToBottom()
+  }, [messages])
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -69,39 +84,30 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
     }
   }
 
-  // Handle sending a new message
-  const handleNewMessage = () => {
-    setTimeout(scrollToBottom, 50)
-  }
-
-  // Track if we're adding a new message
-  const prevMessagesLength = useRef(0)
-
+  // Monitor messages and active chat
   useEffect(() => {
-    // Only scroll when new messages are added
-    if (messages.length > prevMessagesLength.current) {
-      handleNewMessage()
-    }
-
-    // Update the previous messages length
-    prevMessagesLength.current = messages.length
-  }, [messages])
+    // Messages or active chat changed
+  }, [messages, activeChat])
 
   const handleSendMessage = async () => {
     if (newMessage.trim() === "" || !activeChat) return
 
-    // Store the message content and clear the input immediately
-    const messageContent = newMessage
-    setNewMessage("") // Clear input field right away for better UX
+    try {
+      // Store the message content and clear the input immediately
+      const messageContent = newMessage
+      setNewMessage("") // Clear input field right away for better UX
 
-    // Send the message
-    await sendMessage(messageContent, activeChat.id)
-
-    // Focus back on input after sending
-    inputRef.current?.focus()
-
-    // Manually trigger scroll to bottom
-    handleNewMessage()
+      // Send the message to the backend
+      await sendMessage(messageContent, activeChat.id)
+      
+      // Focus back on input after sending
+      inputRef.current?.focus()
+      
+      // Ensure we scroll to the bottom after sending
+      setTimeout(scrollToBottom, 100)
+    } catch (error) {
+      console.error("Error sending message:", error)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -119,25 +125,25 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="w-[350px] h-[450px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 fixed bottom-20 right-4 z-50"
+      className="w-[320px] h-[420px] bg-white rounded-xl shadow-lg flex flex-col overflow-hidden border border-gray-100 fixed bottom-20 right-4 z-50 backdrop-blur-sm bg-opacity-95"
     >
       {/* Header */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-500 text-white p-3 rounded-t-xl">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between bg-gradient-to-r from-teal-500 to-blue-500 text-white py-2 px-3 rounded-t-xl shadow-sm">
+        <div className="flex items-center space-x-2">
           <div className="relative">
-            <Avatar className="h-9 w-9 border-2 border-white/80 shadow-sm">
+            <Avatar className="h-8 w-8 border border-white/90 shadow-sm">
               <AvatarImage src={activeChat.avatar || "/placeholder.svg"} alt={activeChat.name} />
-              <AvatarFallback className="bg-blue-700 text-white">
+              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white font-medium text-xs">
                 {activeChat.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             {activeChat.online && (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white" />
+              <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-400 border border-white animate-pulse" />
             )}
           </div>
           <div>
-            <h3 className="font-semibold text-sm">{activeChat.name}</h3>
-            <p className="text-xs text-blue-100 opacity-90">{activeChat.online ? "En ligne" : "Hors ligne"}</p>
+            <h3 className="font-semibold text-xs">{activeChat.name}</h3>
+            <p className="text-xs text-white/80 text-[10px]">{activeChat.online ? "En ligne" : "Hors ligne"}</p>
           </div>
         </div>
         <div className="flex space-x-1">
@@ -147,13 +153,13 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white hover:bg-white/10 h-8 w-8 rounded-full transition-colors"
+                  className="text-white hover:bg-white/20 h-6 w-6 rounded-full transition-all duration-200 p-0 border border-white/20 backdrop-blur-sm"
                   onClick={onMinimize}
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="bg-gray-800 text-white border-none">
                 <p className="text-xs">Minimize</p>
               </TooltipContent>
             </Tooltip>
@@ -165,13 +171,16 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white hover:bg-white/10 h-8 w-8 rounded-full transition-colors"
-                  onClick={onClose}
+                  className="text-white hover:bg-red-500/20 h-6 w-6 rounded-full transition-all duration-200 p-0 border border-white/20 backdrop-blur-sm"
+                  onClick={() => {
+                    // Close the chat card and completely remove the bubble
+                    onClose();
+                  }}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="bg-gray-800 text-white border-none">
                 <p className="text-xs">Close</p>
               </TooltipContent>
             </Tooltip>
@@ -181,82 +190,73 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
 
       {/* Messages */}
       <div
-        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white space-y-2 scroll-smooth"
+        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-blue-50/30 to-white space-y-1 scroll-smooth custom-scrollbar"
         id="messages-container"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: '#e2e8f0 transparent' }}
       >
         {loadingMessages && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="flex flex-col items-center">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-500 mb-2" />
-              <p className="text-sm text-gray-500">Chargement des messages...</p>
+            <div className="flex flex-col items-center bg-white/80 backdrop-blur-sm p-5 rounded-xl shadow-sm border border-gray-100">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-3" />
+              <p className="text-sm text-gray-600 font-medium">Chargement des messages...</p>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center p-4 rounded-lg bg-blue-50 max-w-xs">
-              <p className="text-gray-600 text-sm mb-2">
-                Commencez à discuter avec <span className="font-medium text-blue-600">{activeChat.name}</span>
+            <div className="text-center p-5 rounded-xl bg-gradient-to-br from-blue-50 to-teal-50/50 max-w-xs shadow-sm border border-blue-100/50">
+              <div className="mb-3 text-blue-500/80">
+                <MessageSquare className="h-10 w-10 mx-auto opacity-80" />
+              </div>
+              <p className="text-gray-700 text-sm mb-2 font-medium">
+                Commencez à discuter avec <span className="font-semibold text-teal-600">{activeChat.name}</span>
               </p>
               <p className="text-xs text-gray-500">Envoyez un message pour démarrer la conversation</p>
             </div>
           </div>
         ) : (
           <AnimatePresence initial={false}>
-            {messages.map((message, index) => (
-              <motion.div
-                key={message._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-              >
-                <ChatBubble
-                  message={{
-                    id: message._id,
-                    content: message.content,
-                    sender: message.sender._id === currentUserId || message._id.startsWith("temp-") ? "user" : "other",
-                    timestamp: new Date(message.createdAt),
-                  }}
-                  senderInfo={{
-                    name:
-                      message.sender._id === currentUserId || message._id.startsWith("temp-")
-                        ? "Vous"
-                        : activeChat.name,
-                    avatar:
-                      message.sender._id === currentUserId || message._id.startsWith("temp-")
-                        ? undefined
-                        : activeChat.avatar,
-                    online:
-                      message.sender._id === currentUserId || message._id.startsWith("temp-")
-                        ? false
-                        : activeChat.online,
-                  }}
-                />
-              </motion.div>
-            ))}
+            {processedMessages.map((message, index) => {
+              const isUser = (message.sender && message.sender._id === currentUserId) || 
+                           (message._id && message._id.startsWith("temp-"));
+              
+              return (
+                <motion.div
+                  key={message._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 }}
+                >
+                  <ChatBubble
+                    message={{
+                      id: message._id || `msg-${index}`,
+                      content: message.content || '',
+                      sender: isUser ? "user" : "other",
+                      timestamp: new Date(message.createdAt || Date.now()),
+                    }}
+                    senderInfo={{
+                      name: isUser
+                          ? "Vous"
+                          : (activeChat && activeChat.name) || 'Contact',
+                      avatar: isUser
+                          ? localStorage.getItem('userAvatar') || undefined
+                          : (activeChat && activeChat.avatar),
+                      online: isUser
+                          ? true
+                          : (activeChat && activeChat.online) || false,
+                    }}
+                    isSequential={message.isSequential}
+                    showAvatar={true}
+                  />
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         )}
         <div ref={messagesEndRef} className="h-1" />
       </div>
 
       {/* Input */}
-      <div className="p-3 bg-white border-t border-gray-100 shadow-sm flex items-center gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">Attach file</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
+      <div className="p-4 bg-white border-t border-gray-100 shadow-sm flex items-center gap-3">
         <div className="relative flex-1">
           <Input
             ref={inputRef}
@@ -264,37 +264,21 @@ export default function ChatCard({ onClose, onMinimize }: ChatCardProps) {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Écrivez un message..."
-            className="pr-10 bg-gray-50 border-gray-200 rounded-full text-gray-900 placeholder:text-gray-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 h-10 transition-all"
+            className="pr-10 bg-gray-50/80 border-gray-200 rounded-full text-gray-900 placeholder:text-gray-400 focus-visible:ring-teal-500 focus-visible:ring-offset-0 h-11 transition-all shadow-sm"
           />
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Add emoji</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
 
         <Button
           variant="default"
           size="icon"
           className={cn(
-            "h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all",
-            !newMessage.trim() && "opacity-70",
+            "h-11 w-11 rounded-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white shadow-md transition-all duration-200",
+            !newMessage.trim() && "opacity-70 cursor-not-allowed",
           )}
           onClick={handleSendMessage}
           disabled={!newMessage.trim()}
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-5 w-5" />  
         </Button>
       </div>
     </motion.div>

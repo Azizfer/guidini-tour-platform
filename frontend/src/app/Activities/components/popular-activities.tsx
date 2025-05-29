@@ -48,14 +48,23 @@ export default function PopularActivities() {
 
   // Prepare activities data
   useEffect(() => {
-    // Filtrer les tours publics et les convertir au format attendu par le composant
+    // Filtrer les tours actifs, les trier par date de création (les plus récents d'abord),
+    // prendre les 4 premiers, puis les convertir au format attendu par le composant
     const publicTours = tours
-      .filter((tour) => tour.isPublic)
+      .filter((tour) => tour.tourStatus === 'active')
+      .sort((a, b) => {
+        // Convert dates to timestamps for comparison
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        // Sort in descending order (newest first)
+        return dateB - dateA;
+      })
+      .slice(0, 4) // Take only the 4 most recent tours
       .map((tour) => ({
-        id: tour.id || `tour-${Math.random().toString(36).substr(2, 9)}`, // Ensure id is always a string
+        id: tour._id || tour.id || '', // Use the actual MongoDB ObjectId
         name: tour.title,
         description: tour.description,
-        image: tour.image || "/placeholder.svg?height=600&width=800&text=" + encodeURIComponent(tour.title),
+        image: tour.image || "",
         tags: Array.isArray(tour.category) ? tour.category : (tour.category ? [tour.category] : ["Visite"]),
         duration: tour.duration || "3 heures",
         groupSize: `${tour.maxParticipants || 10} personnes`,
@@ -73,7 +82,7 @@ export default function PopularActivities() {
               name: "Camping à Ain Drahem",
               description:
                 "Découvrez la beauté naturelle des forêts tunisiennes avec une expérience de camping inoubliable au cœur de la nature",
-              image: "/placeholder.svg?height=600&width=800&text=Camping+à+Ain+Drahem",
+              image: "",
               tags: ["Nature", "Aventure", "Détente"],
 
               duration: "2 jours",
@@ -86,7 +95,7 @@ export default function PopularActivities() {
               name: "Excursion dans le désert",
               description:
                 "Aventure inoubliable dans le Sahara tunisien avec balade à dos de chameau et nuit sous les étoiles",
-              image: "/placeholder.svg?height=600&width=800&text=Excursion+dans+le+désert",
+              image: "",
               tags: ["Aventure", "Nature", "Expérience"],
 
               duration: "1 jour",
@@ -99,7 +108,7 @@ export default function PopularActivities() {
               name: "Plongée à Tabarka",
               description:
                 "Explorez les fonds marins spectaculaires de la Méditerranée avec des instructeurs professionnels",
-              image: "/placeholder.svg?height=600&width=800&text=Plongée+à+Tabarka",
+              image: "",
               tags: ["Mer", "Sport", "Découverte"],
               rating: 4.9,
               reviews: 87,
@@ -372,13 +381,17 @@ export default function PopularActivities() {
             className="flex justify-center mt-12 fade-in"
           >
             <Button
-              asChild
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = '/Activities';
+              }}
             >
-              <Link href="/Activities">
+              <span className="inline-flex items-center">
                 Voir toutes les activités
                 <ChevronRight className="ml-2 h-4 w-4" />
-              </Link>
+              </span>
             </Button>
           </motion.div>
         </div>

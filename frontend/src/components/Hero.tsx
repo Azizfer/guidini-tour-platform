@@ -242,7 +242,7 @@ export default function HeroTunisia() {
               asChild
               className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-xs rounded-full transition-all duration-300 shadow-md hover:shadow-lg w-full sm:w-auto h-8 mt-4"
             >
-              <Link href="/carte-interactive/interactive-map">
+              <Link href="/carte-interactive">
                 <MapPin className="mr-2 h-4 w-4" />
                 Explorez la carte interactive
               </Link>

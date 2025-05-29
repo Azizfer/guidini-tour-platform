@@ -12,10 +12,31 @@
       "static/css/app/page.css",
       "static/chunks/app/page.js"
     ],
+    "/auth/login/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/auth/login/page.js"
+    ],
+    "/Activities/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Activities/page.js"
+    ],
+    "/payment/callback/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/payment/callback/page.js"
+    ],
     "/profileGuide/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/profileGuide/page.js"
+    ],
+    "/carte-interactive/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/carte-interactive/page.css",
+      "static/chunks/app/carte-interactive/page.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",

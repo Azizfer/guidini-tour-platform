@@ -109,9 +109,9 @@ export default function PaymentCard({
         fullName: formData.fullName,
         email: user?.email || "",
         phoneNumber: `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, '')}`,
-        tourId: activity.id.toString(),
-        userId: user?.id || user?._id,
-        orderId: `tour-${activity.id}-${Date.now()}`,
+        tourId: String(activity.id) || '',
+        userId: user?.id || '',
+        orderId: `order-${Date.now()}`, // Simple order ID without embedding the tourId
         participants: participants,
         date: activity.date,
       }

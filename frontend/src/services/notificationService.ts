@@ -3,8 +3,14 @@ import axios from 'axios';
 // Define the API URL from environment variables or use a default
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
+// Add request timeout to prevent hanging requests
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 10000, // 10 seconds timeout
+});
+
 // Define notification types
-export type NotificationType = 'booking' | 'payment' | 'review' | 'system';
+export type NotificationType = 'booking' | 'payment' | 'review' | 'system' | 'booking_confirmation' | 'booking_cancellation';
 
 // Define notification interface
 export interface Notification {
@@ -23,6 +29,9 @@ export interface Notification {
 
 // Cache for notifications to avoid multiple requests
 let cachedNotifications: Notification[] | null = null;
+
+// Track when the cache was last updated
+let lastCacheTime = 0;
 
 // Fallback notifications for when the API is unavailable
 const fallbackNotifications: Notification[] = [
@@ -77,26 +86,45 @@ export const formatTimeAgo = (date: Date) => {
 };
 
 const notificationService = {
+  // Clear the notification cache manually
+  clearCache: () => {
+    console.log('Manually clearing notification cache');
+    cachedNotifications = null;
+    lastCacheTime = 0;
+  },
+  
   // Get all notifications for the current user
   getUserNotifications: async (): Promise<Notification[]> => {
     try {
-      // Clear cache if needed
-      if (cachedNotifications) {
+      // Return cached notifications if available and not expired
+      // We'll use a 5-second cache to ensure new notifications appear quickly
+      if (cachedNotifications && Date.now() - lastCacheTime < 5000) {
+        console.log('Returning cached notifications');
         return cachedNotifications;
       }
+      
+      // Always clear cache when explicitly fetching notifications
+      cachedNotifications = null;
 
       const token = localStorage.getItem('token');
       if (!token) {
+        console.log('No auth token found, returning fallback notifications');
         return fallbackNotifications;
       }
 
-      const response = await axios.get<Notification[]>(`${API_URL}/notifications`, {
+      console.log('Fetching notifications from API...');
+      const response = await axiosInstance.get<Notification[]>('/notifications', {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
+      console.log(`Received ${response.data.length} notifications from API`);
+      
+      // Update cache with fresh data
       cachedNotifications = response.data;
+      lastCacheTime = Date.now();
+      
       return response.data;
     } catch (error) {
       console.log('Error fetching notifications:', error);
@@ -107,8 +135,269 @@ const notificationService = {
           status: axiosError.response.status,
           data: axiosError.response.data
         });
+      } else if (axiosError.request) {
+        console.log('No response received from server - network issue');
+      } else {
+        console.log('Error during request setup:', axiosError.message);
       }
+      
+      // If we have cached notifications, return those instead of fallbacks
+      if (cachedNotifications) {
+        console.log('Returning last cached notifications due to error');
+        return cachedNotifications;
+      }
+      
+      console.log('Returning fallback notifications');
       return fallbackNotifications;
+    }
+  },
+
+  // Create a new booking notification
+  createBookingNotification: async (
+    tourId: string,
+    tourTitle: string,
+    tourDate: string,
+    guideId: string,
+    userId: string,
+    touristName: string
+  ): Promise<boolean> => {
+    try {
+      console.log('Creating booking notification with:', { tourId, tourTitle, tourDate, guideId, userId, touristName });
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, cannot create booking notification');
+        return false;
+      }
+      
+      // Format the date for display
+      const formattedDate = new Date(tourDate).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      // Create notification for the tourist
+      const touristNotification = {
+        title: "Réservation confirmée",
+        description: `Votre réservation pour ${tourTitle} le ${formattedDate} a été confirmée.`,
+        type: "booking_confirmation",
+        tourId,
+        recipient: userId, // This is the key field expected by the backend
+        read: false
+      };
+
+      // Create notification for the guide
+      const guideNotification = {
+        title: "Nouvelle réservation",
+        description: `${touristName} a réservé votre visite ${tourTitle} pour le ${formattedDate}.`,
+        type: "booking_confirmation",
+        tourId,
+        recipient: guideId, // This is the key field expected by the backend
+        userId: userId, // Track the tourist's ID for the guide (for reference)
+        read: false
+      };
+      
+      console.log('Booking notification payloads:', { touristNotification, guideNotification });
+
+      // Try direct API endpoint for notifications
+      try {
+        // Create tourist notification
+        console.log('Creating tourist booking notification at:', `${API_URL}/notification`);
+        const touristResponse = await axios.post(`${API_URL}/notification`, 
+          touristNotification, 
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        console.log('Tourist booking notification response:', touristResponse.status, touristResponse.data);
+      } catch (touristError: any) {
+        console.error('Error creating tourist booking notification:', 
+          touristError.response?.data || touristError.message);
+      }
+      
+      try {
+        // Create guide notification
+        console.log('Creating guide booking notification at:', `${API_URL}/notification`);
+        const guideResponse = await axios.post(`${API_URL}/notification`, 
+          guideNotification, 
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        console.log('Guide booking notification response:', guideResponse.status, guideResponse.data);
+      } catch (guideError: any) {
+        console.error('Error creating guide booking notification:', 
+          guideError.response?.data || guideError.message);
+      }
+      
+      // Also try the original endpoint format as fallback
+      console.log('Sending to original API URL:', `${API_URL}/notifications`);
+      const response = await axios.post(`${API_URL}/notifications`, 
+        { 
+          touristNotification,
+          guideNotification
+        }, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('Booking notification API response:', response.status, response.data);
+
+      // Clear the cache to force a refresh
+      cachedNotifications = null;
+      
+      return true;
+    } catch (error) {
+      console.log('Error creating booking notification:', error);
+      
+      // More detailed error logging
+      const axiosError = error as any;
+      if (axiosError.response) {
+        console.log('Error response from server:', {
+          status: axiosError.response.status,
+          data: axiosError.response.data
+        });
+      } else if (axiosError.request) {
+        console.log('No response received from server');
+      } else if (error instanceof Error) {
+        console.log('Error message:', error.message);
+      } else {
+        console.log('Unknown error type');
+      }
+      
+      // Create local notifications as fallback
+      console.log('API call failed, creating local booking notifications as fallback');
+      
+      // Format the date for display
+      const formattedDate = new Date(tourDate).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      // Create tourist notification locally
+      addLocalNotification({
+        title: "Réservation confirmée",
+        description: `Votre réservation pour ${tourTitle} le ${formattedDate} a été confirmée.`,
+        type: "booking_confirmation",
+        tourId,
+        userId
+      });
+      
+      // Create guide notification locally
+      addLocalNotification({
+        title: "Nouvelle réservation",
+        description: `${touristName} a réservé votre visite ${tourTitle} pour le ${formattedDate}.`,
+        type: "booking_confirmation",
+        tourId,
+        guideId
+      });
+      
+      return true; // Return true since we created local notifications
+    }
+  },
+  
+  // Create a new cancellation notification
+  createCancellationNotification: async (
+    tourId: string,
+    tourTitle: string,
+    guideId: string,
+    userId: string,
+    touristName: string,
+    reason?: string
+  ): Promise<boolean> => {
+    try {
+      console.log('Creating cancellation notification with:', { tourId, tourTitle, guideId, userId, touristName, reason });
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, cannot create cancellation notification');
+        return false;
+      }
+      
+      // Create notification for the tourist
+      const touristNotification = {
+        title: "Réservation annulée",
+        description: reason 
+          ? `Votre réservation pour ${tourTitle} a été annulée. Raison: ${reason}`
+          : `Votre réservation pour ${tourTitle} a été annulée.`,
+        type: "booking_cancellation",
+        tourId,
+        userId
+      };
+
+      // Create notification for the guide
+      const guideNotification = {
+        title: "Réservation annulée",
+        description: reason 
+          ? `${touristName} a annulé sa réservation pour ${tourTitle}. Raison: ${reason}`
+          : `${touristName} a annulé sa réservation pour ${tourTitle}.`,
+        type: "booking_cancellation",
+        tourId,
+        guideId
+      };
+      
+      console.log('Cancellation notification payloads:', { touristNotification, guideNotification });
+
+      // Send notifications to the backend
+      const response = await axios.post(`${API_URL}/notifications`, 
+        { 
+          touristNotification,
+          guideNotification
+        }, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log('Cancellation notification API response:', response.status, response.data);
+
+      // Clear the cache to force a refresh
+      cachedNotifications = null;
+      
+      return true;
+    } catch (error) {
+      console.log('Error creating cancellation notification:', error);
+      
+      // Create local notifications as fallback
+      console.log('API call failed, creating local cancellation notifications as fallback');
+      
+      // Create tourist notification locally
+      addLocalNotification({
+        title: "Réservation annulée",
+        description: reason 
+          ? `Votre réservation pour ${tourTitle} a été annulée. Raison: ${reason}`
+          : `Votre réservation pour ${tourTitle} a été annulée.`,
+        type: "booking_cancellation",
+        tourId,
+        userId
+      });
+      
+      // Create guide notification locally
+      addLocalNotification({
+        title: "Réservation annulée",
+        description: reason 
+          ? `${touristName} a annulé sa réservation pour ${tourTitle}. Raison: ${reason}`
+          : `${touristName} a annulé sa réservation pour ${tourTitle}.`,
+        type: "booking_cancellation",
+        tourId,
+        guideId
+      });
+      
+      return true; // Return true since we created local notifications
     }
   },
 
@@ -131,43 +420,69 @@ const notificationService = {
       
       console.log('Token found:', token.substring(0, 10) + '...');
 
-      // Create notification for the tourist
-      const touristNotification = {
-        title: "Paiement réussi",
-        description: `Votre paiement de ${amount} TND pour ${tourTitle} a été confirmé.`,
-        type: "payment",
-        tourId,
-        userId
-      };
-
-      // Create notification for the guide
+      // Only create notification for the guide, not for the tourist
       const guideNotification = {
-        title: "Nouveau paiement reçu",
+        title: "Paiement reçu",
         description: `Vous avez reçu un paiement de ${amount} TND pour ${tourTitle}.`,
         type: "payment",
         tourId,
-        guideId,
+        recipient: guideId, // This is the key field expected by the backend
+        read: false,
         amount
       };
       
-      console.log('Notification payloads:', { touristNotification, guideNotification });
-      console.log('Sending to API URL:', `${API_URL}/notifications`);
-
-      // Send notifications to the backend
-      const response = await axios.post(`${API_URL}/notifications`, 
-        { 
-          touristNotification,
-          guideNotification
-        }, 
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      console.log('Guide notification payload:', guideNotification);
       
-      console.log('Notification API response:', response.status, response.data);
-
+      // Create only the guide notification
+      console.log('Creating guide notification at:', `${API_URL}/notifications`);
+      try {
+        const response = await axios.post(`${API_URL}/notifications`, 
+          guideNotification, 
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        console.log('Guide notification created successfully:', response.status, response.data);
+        
+        // Dispatch a custom event to trigger notification refresh
+        window.dispatchEvent(new Event('notificationUpdate'));
+        return true;
+      } catch (error: any) {
+        console.error('Error creating guide notification:', 
+          error.response?.data || error.message);
+        
+        // Try alternative approach as fallback
+        console.log('Trying alternative notification creation as fallback');
+        
+        try {
+          // Try to create guide notification with a different format
+          console.log('Creating guide notification with data:', JSON.stringify(guideNotification));
+          const guideResponse = await axios.post(`${API_URL}/notifications`, 
+            { notification: guideNotification }, 
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log('Guide notification created:', guideResponse.status);
+          return true;
+        } catch (e: any) {
+          console.error('Failed to create guide notification:', e.message);
+          console.error('Error details:', e.response?.data || 'No response data');
+          // Try to determine if guide recipient is missing or invalid
+          if (!guideId || guideId === 'guide-id-required') {
+            console.error('Guide ID is missing or invalid:', guideId);
+          }
+          return false;
+        }
+      }
+      
       // Clear the cache to force a refresh
       cachedNotifications = null;
       console.log('Notification cache cleared after creation');
@@ -220,18 +535,23 @@ const notificationService = {
   // Mark notification as read
   markAsRead: async (notificationId: string): Promise<boolean> => {
     try {
+      console.log(`Marking notification ${notificationId} as read`);
       const token = localStorage.getItem('token');
+      
       if (!token) {
+        console.log('No auth token found, cannot mark notification as read');
         return false;
       }
 
-      await axios.put(`${API_URL}/notifications/${notificationId}/read`, {}, {
+      const response = await axiosInstance.patch(`/notifications/${notificationId}/read`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      // Update the cache
+      console.log('Successfully marked notification as read:', response.data);
+
+      // Update the cache if we have it
       if (cachedNotifications) {
         cachedNotifications = cachedNotifications.map(notification => 
           notification.id === notificationId 
@@ -242,7 +562,14 @@ const notificationService = {
 
       return true;
     } catch (error) {
-      console.log('Error marking notification as read:', error);
+      console.error('Error marking notification as read:', error);
+      const axiosError = error as any;
+      if (axiosError.response) {
+        console.error('Server error details:', {
+          status: axiosError.response.status,
+          data: axiosError.response.data
+        });
+      }
       return false;
     }
   },
@@ -252,33 +579,26 @@ const notificationService = {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.log('No token found, cannot mark notifications as read');
         return false;
       }
-
-      await axios.put(`${API_URL}/notifications/read-all`, {}, {
+      
+      const response = await axios.patch(`${API_URL}/notifications/read-all`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-
-      // Update the cache
-      if (cachedNotifications) {
-        cachedNotifications = cachedNotifications.map(notification => ({ 
-          ...notification, 
-          read: true 
-        }));
-      }
-
+      
+      console.log('Mark all as read response:', response.status, response.data);
+      
+      // Clear the cache to force a refresh
+      cachedNotifications = null;
+      
       return true;
     } catch (error) {
       console.log('Error marking all notifications as read:', error);
       return false;
     }
-  },
-
-  // Clear the cache
-  clearCache: () => {
-    cachedNotifications = null;
   }
 };
 

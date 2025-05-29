@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/app/LogingContext/AuthContext"
-import { Tour, getToursByGuide, createTour, updateTour, deleteTour, toggleTourVisibility } from "@/services/toursService"
+import { Tour, TourStatus, getToursByGuide, createTour, updateTour, deleteTour, toggleTourVisibility, markTourAsCompleted } from "@/services/toursService"
+import { updateTourStatusStats } from "@/services/guideStatsService"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -112,6 +113,76 @@ export default function ToursManagement() {
     fetchTours()
   }, [user])
   
+  // Define the type for our custom event
+  type TourStatusChangeEvent = CustomEvent<{
+    tourId: string;
+    status: TourStatus;
+  }>;
+
+  // Listen for tour status change events
+  useEffect(() => {
+    const handleTourStatusChange = async (event: Event) => {
+      // Cast the event to our custom event type
+      const customEvent = event as TourStatusChangeEvent;
+      const { tourId, status } = customEvent.detail;
+      console.log(`Tour status change event received: ${tourId} -> ${status}`);
+      
+      if (status === 'completed') {
+        try {
+          // Find the current tour to get its previous status
+          const currentTour = tours.find(tour => (tour.id === tourId || tour._id === tourId));
+          if (!currentTour) {
+            console.error('Tour not found:', tourId);
+            return;
+          }
+          
+          const oldStatus = currentTour.tourStatus as TourStatus;
+          console.log(`Marking tour ${tourId} as completed (was ${oldStatus})`);
+          
+          // Call the API to mark the tour as completed
+          const updatedTour = await markTourAsCompleted(tourId);
+          
+          if (updatedTour) {
+            // Update the tour in the local state
+            setTours(prev => prev.map(tour => 
+              (tour.id === tourId || tour._id === tourId) ? {...tour, tourStatus: 'completed'} : tour
+            ));
+            
+            // Update guide stats
+            const guideId = user?.id || localStorage.getItem('userId') || '';
+            await updateTourStatusStats(guideId, oldStatus, 'completed');
+            
+            // Show success message
+            toast({
+              title: "Succès",
+              description: "Tour marqué comme complété avec succès",
+              variant: "default"
+            });
+            
+            // Trigger dashboard refresh
+            const refreshEvent = new Event('refreshDashboard');
+            window.dispatchEvent(refreshEvent);
+          }
+        } catch (error) {
+          console.error('Error marking tour as completed:', error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de marquer le tour comme complété",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('tourStatusChanged', handleTourStatusChange);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('tourStatusChanged', handleTourStatusChange);
+    };
+  }, [tours, user, toast])
+  
   // Form handling
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -191,7 +262,8 @@ export default function ToursManagement() {
       // Ici, nous simulons simplement l'envoi de l'URL de l'image
       const tourData = {
         ...formData,
-        guideId
+        guideId,
+        tourStatus: (formData.isPublic ? 'active' : 'private') as TourStatus // Ajouter le statut du tour en fonction de sa visibilité
       }
       
       // Suppression du champ imageFile avant l'envoi à l'API
@@ -212,7 +284,10 @@ export default function ToursManagement() {
         // Mise à jour de la liste des tours
         setTours(prev => [...prev, newTour])
         
-        // Mise à jour du compteur de tours actifs dans le dashboard
+        // Mise à jour des statistiques du guide
+        const guideId = user?.id || localStorage.getItem('userId') || '';
+        // Mettre à jour les statistiques en fonction du statut du tour
+        updateTourStatusStats(guideId, null, newTour.tourStatus);
         // Émettre un événement personnalisé pour informer le dashboard
         try {
           console.log('Émission de l\'événement tourAdded');
@@ -280,77 +355,45 @@ export default function ToursManagement() {
     }
   }
   
-  // Handle tour deletion
+  // Handle tour deletion - version simplifiée sans dépendance aux stats
   const handleDeleteTour = async (id: string) => {
-    // Demander confirmation avant de supprimer
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce tour ?")) {
-      return;
-    }
-    
     try {
-      // Trouver le tour dans l'état actuel pour avoir ses informations
-      const tourToDelete = tours.find(tour => (tour.id === id || tour._id === id));
+      console.log(`Tentative de suppression du tour avec ID: ${id}`);
       
-      if (!tourToDelete) {
-        toast({
-          title: "Erreur",
-          description: "Tour introuvable",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Essayer directement de supprimer le tour sans vérifications préalables
+      const success = await deleteTour(id);
       
-      // Essayer d'utiliser l'API pour supprimer le tour
-      let success = false;
-      try {
-        success = await deleteTour(id);
-      } catch (apiError) {
-        console.log("Erreur API lors de la suppression, utilisation du mode hors ligne", apiError);
-        // En cas d'échec de l'API, simuler la suppression localement
-        success = true;
-      }
-      
+      // Si la suppression a réussi, mettre à jour l'interface utilisateur
       if (success) {
+        console.log(`Suppression réussie du tour ${id}, mise à jour de l'UI`);
+        
+        // Notification de succès
         toast({
           title: "Succès",
           description: "Tour supprimé avec succès",
           variant: "default"
         });
         
-        // Mettre à jour la liste des tours
-        setTours(prev => prev.filter(tour => (tour.id !== id && tour._id !== id)));
-        
-        // Émettre un événement pour mettre à jour le compteur de tours dans le dashboard
-        try {
-          console.log('Émission de l\'événement tourDeleted');
-          
-          // Stocker le type d'événement dans localStorage pour la communication entre composants
-          localStorage.setItem('lastDashboardEvent', 'tourDeleted');
-          
-          const event = new CustomEvent('tourDeleted', { 
-            detail: { 
-              tourId: id,
-              tour: tourToDelete 
-            },
-            bubbles: true,
-            cancelable: true
-          });
-          window.dispatchEvent(event);
-          
-          // Méthode alternative pour s'assurer que l'événement est bien émis
-          setTimeout(() => {
-            const refreshEvent = new Event('refreshDashboard');
-            window.dispatchEvent(refreshEvent);
-          }, 500);
-        } catch (eventError) {
-          console.error('Erreur lors de l\'émission de l\'événement:', eventError);
-        }
+        // Mettre à jour la liste des tours sans attendre la mise à jour des stats
+        setTours(prev => prev.filter(tour => {
+          const tourId = tour._id || tour.id;
+          return tourId !== id;
+        }));
+      } else {
+        // Notification d'échec
+        console.error(`Échec de la suppression du tour ${id}`);
+        toast({
+          title: "Erreur",
+          description: "Impossible de supprimer le tour. Veuillez réessayer.",
+          variant: "destructive"
+        });
       }
-    } catch (err) {
-      console.error("Erreur lors de la suppression du tour:", err);
+    } catch (error) {
+      // Gestion des erreurs
+      console.error("Erreur lors de la suppression du tour:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer le tour. Veuillez réessayer.",
+        description: "Une erreur est survenue lors de la suppression.",
         variant: "destructive"
       });
     }
@@ -371,23 +414,53 @@ export default function ToursManagement() {
         return;
       }
       
+      // Si le tour est complété, ne pas permettre le changement
+      if (currentTour.tourStatus === 'completed') {
+        toast({
+          title: "Action impossible",
+          description: "Un tour complété ne peut pas changer de statut",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Déterminer le nouveau statut en fonction du statut actuel
+      // Private tours can only be marked as active
+      const newStatus: TourStatus = currentTour.tourStatus === 'active' ? 'private' : 'active';
+      
+      console.log(`Changing tour ${id} status from ${currentTour.tourStatus} to ${newStatus}`);
+      
       // Essayer d'utiliser l'API pour basculer la visibilité
       let updatedTour;
       try {
         updatedTour = await toggleTourVisibility(id);
+        
+        // Mettre à jour le statut du tour si l'API ne le fait pas
+        if (updatedTour && !updatedTour.tourStatus) {
+          updatedTour.tourStatus = newStatus;
+        }
       } catch (apiError) {
         console.log("Erreur API, utilisation du mode hors ligne", apiError);
         // En cas d'échec de l'API, simuler la mise à jour localement
         updatedTour = {
           ...currentTour,
-          isPublic: !currentTour.isPublic
+          isPublic: newStatus === 'active', // Pour compatibilité avec l'ancien système
+          tourStatus: newStatus
         };
       }
       
       if (updatedTour) {
+        // Mettre à jour les statistiques du guide
+        const guideId = user?.id || localStorage.getItem('userId') || '';
+        await updateTourStatusStats(
+          guideId, 
+          currentTour.tourStatus as TourStatus, 
+          updatedTour.tourStatus as TourStatus
+        );
+        
         toast({
           title: "Succès",
-          description: `Tour ${updatedTour.isPublic ? 'publié' : 'masqué'} avec succès`,
+          description: `Tour ${updatedTour.tourStatus === 'active' ? 'activé' : 'passé en privé'} avec succès`,
           variant: "default"
         });
         
@@ -395,6 +468,10 @@ export default function ToursManagement() {
         setTours(prev => prev.map(tour => 
           (tour.id === id || tour._id === id) ? updatedTour : tour
         ));
+        
+        // Trigger dashboard refresh for visibility changes too
+        const refreshEvent = new Event('refreshDashboard');
+        window.dispatchEvent(refreshEvent);
       }
     } catch (err) {
       console.error("Erreur lors du changement de visibilité du tour:", err);
@@ -437,63 +514,67 @@ export default function ToursManagement() {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Ajouter un nouveau tour</DialogTitle>
-              <DialogDescription>
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg">Ajouter un nouveau tour</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
                 Remplissez les informations pour créer un nouveau tour.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titre</Label>
+            <div className="grid gap-2 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="title" className="text-xs">Titre</Label>
                   <Input
                     id="title"
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
                     placeholder="Visite du musée du Bardo"
+                    className="h-8 text-sm"
                   />
-                  {formErrors.title && <p className="text-sm text-red-500">{formErrors.title}</p>}
+                  {formErrors.title && <p className="text-xs text-red-500">{formErrors.title}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Lieu</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="location" className="text-xs">Lieu</Label>
                   <Input
                     id="location"
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
                     placeholder="Tunis"
+                    className="h-8 text-sm"
                   />
-                  {formErrors.location && <p className="text-sm text-red-500">{formErrors.location}</p>}
+                  {formErrors.location && <p className="text-xs text-red-500">{formErrors.location}</p>}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+              <div className="space-y-1">
+                <Label htmlFor="description" className="text-xs">Description</Label>
                 <Textarea
                   id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Décrivez votre tour..."
-                  rows={3}
+                  className="text-sm min-h-[60px]"
+                  rows={2}
                 />
-                {formErrors.description && <p className="text-sm text-red-500">{formErrors.description}</p>}
+                {formErrors.description && <p className="text-xs text-red-500">{formErrors.description}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Durée</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="duration" className="text-xs">Durée</Label>
                   <Input
                     id="duration"
                     name="duration"
                     value={formData.duration}
                     onChange={handleInputChange}
                     placeholder="2 heures"
+                    className="h-8 text-sm"
                   />
-                  {formErrors.duration && <p className="text-sm text-red-500">{formErrors.duration}</p>}
+                  {formErrors.duration && <p className="text-xs text-red-500">{formErrors.duration}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Prix (TND)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="price" className="text-xs">Prix (TND)</Label>
                   <Input
                     id="price"
                     name="price"
@@ -501,37 +582,40 @@ export default function ToursManagement() {
                     value={formData.price}
                     onChange={handleInputChange}
                     min={0}
+                    className="h-8 text-sm"
                   />
-                  {formErrors.price && <p className="text-sm text-red-500">{formErrors.price}</p>}
+                  {formErrors.price && <p className="text-xs text-red-500">{formErrors.price}</p>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="date" className="text-xs">Date</Label>
                   <Input
                     id="date"
                     name="date"
                     type="date"
                     value={formData.date}
                     onChange={handleInputChange}
+                    className="h-8 text-sm"
                   />
-                  {formErrors.date && <p className="text-sm text-red-500">{formErrors.date}</p>}
+                  {formErrors.date && <p className="text-xs text-red-500">{formErrors.date}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time">Heure</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="time" className="text-xs">Heure</Label>
                   <Input
                     id="time"
                     name="time"
                     type="time"
                     value={formData.time}
                     onChange={handleInputChange}
+                    className="h-8 text-sm"
                   />
-                  {formErrors.time && <p className="text-sm text-red-500">{formErrors.time}</p>}
+                  {formErrors.time && <p className="text-xs text-red-500">{formErrors.time}</p>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxParticipants">Nombre max. de participants</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="maxParticipants" className="text-xs">Nombre max. de participants</Label>
                   <Input
                     id="maxParticipants"
                     name="maxParticipants"
@@ -539,31 +623,32 @@ export default function ToursManagement() {
                     value={formData.maxParticipants}
                     onChange={handleInputChange}
                     min={1}
+                    className="h-8 text-sm"
                   />
-                  {formErrors.maxParticipants && <p className="text-sm text-red-500">{formErrors.maxParticipants}</p>}
+                  {formErrors.maxParticipants && <p className="text-xs text-red-500">{formErrors.maxParticipants}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Catégorie</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="category" className="text-xs">Catégorie</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(value) => handleSelectChange(value, "category")}
                   >
-                    <SelectTrigger id="category">
+                    <SelectTrigger id="category" className="h-8 text-sm">
                       <SelectValue placeholder="Sélectionnez une catégorie" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
+                        <SelectItem key={category} value={category} className="text-sm">
                           {category}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {formErrors.category && <p className="text-sm text-red-500">{formErrors.category}</p>}
+                  {formErrors.category && <p className="text-xs text-red-500">{formErrors.category}</p>}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="image">Image du tour</Label>
+              <div className="space-y-1">
+                <Label htmlFor="image" className="text-xs">Image du tour</Label>
                 <Input
                   id="image"
                   name="image"
@@ -579,21 +664,22 @@ export default function ToursManagement() {
                       }));
                     }
                   }}
-                  className="cursor-pointer"
+                  className="cursor-pointer h-8 text-xs py-1"
                 />
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mt-1">
                 <Switch
                   id="isPublic"
                   checked={formData.isPublic}
                   onCheckedChange={(checked) => handleSwitchChange(checked, "isPublic")}
+                  className="h-4 w-8"
                 />
-                <Label htmlFor="isPublic">Rendre ce tour public</Label>
+                <Label htmlFor="isPublic" className="text-xs">Rendre ce tour public</Label>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Annuler</Button>
-              <Button onClick={handleAddTour} className="bg-blue-600 hover:bg-blue-700 text-white">Ajouter</Button>
+            <DialogFooter className="py-2">
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="h-8 text-xs">Annuler</Button>
+              <Button onClick={handleAddTour} className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs">Ajouter</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -614,11 +700,11 @@ export default function ToursManagement() {
           onDelete={handleDeleteTour}
           onTourUpdated={(updatedTour: Tour) => {
             setTours(prev => prev.map(tour => 
-              tour.id === updatedTour.id ? updatedTour : tour
+              (tour.id === updatedTour.id || tour._id === updatedTour._id) ? updatedTour : tour
             ))
           }}
         />
       </div>
     </div>
   )
-}
+  }

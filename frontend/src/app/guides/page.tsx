@@ -2,7 +2,7 @@
 
 import AllGuides from '@/app/guides/components/AllGuides'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import Footer from '@/components/footer'
 import { ThemeProvider } from 'next-themes'
 
 export default function AllGuidesPage() {

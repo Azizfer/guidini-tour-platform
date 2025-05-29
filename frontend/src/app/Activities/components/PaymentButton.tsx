@@ -69,9 +69,9 @@ export default function PaymentButton({ tourId, tourName, price, className }: Pa
         lastName: formData.lastName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
-        tourId: tourId,
-        userId: user?.id || user?._id,
-        orderId: `tour-${tourId}-${Date.now()}`,
+        tourId: String(tourId),
+        userId: user?.id || '',
+        orderId: `order-${Date.now()}`,
       }
 
       console.log("Initializing payment with data:", {

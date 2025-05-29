@@ -5,7 +5,7 @@ import ClientWrapper from '../components/ClientWrapper';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 import ChatWrapper from "@/components/chat-wrapper";
-
+// IntegratedSlider component removed - file not found
 
 export default function RootLayout({
   children,
@@ -21,6 +21,7 @@ export default function RootLayout({
               {children}
               <ClientWrapper />
               <Toaster />
+              {/* IntegratedSlider component removed - file not found */}
             </ChatWrapper>
           </AuthProvider>
         </ThemeProvider>

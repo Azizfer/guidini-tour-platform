@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/LogingContext/AuthContext" // Using your provided AuthContext path
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import ProfilePopover from "./Profile-popover"
-import NotificationPopover from "./notification-popover"
+import ProfilePopover from "./profile-popover"
+import NotificationPopover from "./notifications/NotificationIcon"
 import notificationService, { Notification as NotificationType } from "@/services/notificationService"
 import MessagePopover from "./message-popover"
 import GlobalLogoutConfirmation from "./LogoutConfirmation"
@@ -34,10 +34,14 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const { isAuthenticated, user: authUser, logout } = useAuth()
   const { unreadCount: unreadMessageCount = 0 } = useChat()
+  
+  // State to store the transformed user data
+  const [userData, setUserData] = useState<UserProfile | null>(null)
 
   // Transform auth user to the format expected by our components
-  const user: UserProfile = authUser
-    ? {
+  useEffect(() => {
+    if (authUser) {
+      const transformedUser: UserProfile = {
         id: authUser.id || authUser._id || "default-id",
         name: authUser.name || "Utilisateur",
         email: authUser.email || "",
@@ -49,29 +53,43 @@ export default function Header() {
           ) : "",
         username: authUser.username || authUser.name || "user",
         userType: authUser.userType || "touriste",
-      }
-    : ({} as UserProfile)
-    
-  // Debug user data
-  useEffect(() => {
-    if (authUser) {
-      console.log("Auth user data:", authUser);
-      console.log("Profile image from auth:", authUser.profileImage);
-      console.log("User avatar after transformation:", user.avatar);
-      
-      // Check localStorage to see what's stored there
-      try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          console.log("User from localStorage:", parsedUser);
-          console.log("Profile image from localStorage:", parsedUser.profileImage);
-        }
-      } catch (error) {
-        console.error("Error parsing user from localStorage:", error);
-      }
+      };
+      setUserData(transformedUser);
+    } else {
+      setUserData({
+        id: "guest",
+        name: "Invité",
+        email: "",
+        avatar: "",
+        username: "guest",
+        userType: "guest",
+      });
     }
-  }, [authUser, user.avatar]);
+  }, [authUser]);
+  
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      const updatedUser = event.detail;
+      console.log("Profile updated event received in Header:", updatedUser);
+      
+      if (userData) {
+        setUserData({
+          ...userData,
+          name: updatedUser.name,
+          email: updatedUser.email
+        });
+      }
+    };
+
+    // Add event listener for profile updates
+    window.addEventListener("userProfileUpdated", handleProfileUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate as EventListener);
+    };
+  }, [userData]);
+
   const router = useRouter()
 
   // Popover states
@@ -96,31 +114,75 @@ export default function Header() {
       setShowMessagePopover(false)
     }
 
+    // Listen for notification click event
+    const handleNotificationClick = () => {
+      setShowNotificationPopover(false)
+    }
+
     window.addEventListener("userLoggedOut", handleLogout)
+    window.addEventListener("notificationClicked", handleNotificationClick)
 
     return () => {
       window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("userLoggedOut", handleLogout)
+      window.removeEventListener("notificationClicked", handleNotificationClick)
     }
   }, [])
 
   // Close popovers when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside profile button and popover
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setShowProfilePopover(false)
+        // Check if click is inside profile popover
+        const profilePopover = document.querySelector('.profile-popover-container');
+        const isClickInsideProfilePopover = profilePopover ? profilePopover.contains(event.target as Node) : false;
+        
+        if (!isClickInsideProfilePopover) {
+          setShowProfilePopover(false)
+        }
       }
+      
+      // Check if click is outside notification button and popover
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotificationPopover(false)
+        // Check if click is inside notification popover
+        const notificationPopover = document.querySelector('.notification-popover-container');
+        const isClickInsideNotificationPopover = notificationPopover ? notificationPopover.contains(event.target as Node) : false;
+        
+        if (!isClickInsideNotificationPopover) {
+          setShowNotificationPopover(false)
+        }
       }
+      
+      // Check if click is outside message button and popover
       if (messageRef.current && !messageRef.current.contains(event.target as Node)) {
-        setShowMessagePopover(false)
+        // Check if click is inside message popover
+        const messagePopover = document.querySelector('.message-popover-container');
+        const isClickInsideMessagePopover = messagePopover ? messagePopover.contains(event.target as Node) : false;
+        
+        if (!isClickInsideMessagePopover) {
+          setShowMessagePopover(false)
+        }
       }
     }
-
-    document.addEventListener("mousedown", handleClickOutside)
+    
+    // Add listener for the custom force close event
+    const handleForceCloseMessagePopover = () => {
+      console.log('Force closing message popover');
+      // Only close the message popover without affecting other popovers
+      if (showMessagePopover) {
+        setShowMessagePopover(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('forceCloseMessagePopover', handleForceCloseMessagePopover);
+    window.addEventListener('closeMessagePopover', handleForceCloseMessagePopover);
+    
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('forceCloseMessagePopover', handleForceCloseMessagePopover);
+      window.removeEventListener('closeMessagePopover', handleForceCloseMessagePopover);
     }
   }, [])
 
@@ -162,17 +224,17 @@ export default function Header() {
     };
   }, [isAuthenticated])
 
-  // Navigate to the auth pages
+  // Navigate to the auth pages - using direct window.location for immediate navigation
   const navigateToLogin = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    router.push("/auth/login")
+    window.location.href = "/auth/login"
   }
 
   const navigateToRegister = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    router.push("/auth/register")
+    window.location.href = "/auth/register"
   }
 
   // This function is no longer needed as the logout is now handled by the LogoutConfirmation component
@@ -224,7 +286,7 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="relative flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    className="relative flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 text-gray-700"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -270,7 +332,7 @@ export default function Header() {
               </Popover>
 
               {/* Auth Buttons or User Actions */}
-              {isAuthenticated && user ? (
+              {isAuthenticated && userData ? (
                 <div className="flex items-center gap-3">
                   {/* Message Icon with Popover */}
                   <div className="relative">
@@ -281,7 +343,7 @@ export default function Header() {
                         setShowNotificationPopover(false)
                         setShowProfilePopover(false)
                       }}
-                      className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors relative group"
+                      className="message-button flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 relative"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -314,8 +376,9 @@ export default function Header() {
                         >
                           <MessagePopover
                             onViewAllMessages={() => {
-                              console.log("Viewing all messages")
-                              router.push("/messages")
+                              console.log("Closing message popover without navigation")
+                              // Don't navigate to /messages since it doesn't exist
+                              // router.push("/messages")
                               setShowMessagePopover(false)
                             }}
                           />
@@ -326,48 +389,7 @@ export default function Header() {
 
                   {/* Notification Icon with Popover */}
                   <div className="relative">
-                    <button
-                      ref={notificationRef}
-                      onClick={() => {
-                        setShowNotificationPopover(!showNotificationPopover)
-                        setShowMessagePopover(false)
-                        setShowProfilePopover(false)
-                      }}
-                      className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors relative group"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="size-5 text-gray-700"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
-                        />
-                      </svg>
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
-                    <AnimatePresence>
-                      {showNotificationPopover && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute right-0 mt-2 z-50"
-                        >
-                          <NotificationPopover />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <NotificationPopover />
                   </div>
 
                   {/* Profile Icon with Popover */}
@@ -381,13 +403,13 @@ export default function Header() {
                       }}
                       className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 overflow-hidden border border-gray-200"
                     >
-                      {user.avatar && user.avatar.trim() !== "" ? (
+                      {userData && userData.avatar && userData.avatar.trim() !== "" ? (
                         <img
-                          src={user.avatar}
-                          alt={user.name}
+                          src={userData.avatar}
+                          alt={userData.name}
                           className="h-full w-full object-cover"
                           onError={(e) => {
-                            console.log("Image failed to load:", user.avatar);
+                            console.log("Image failed to load:", userData.avatar);
                             e.currentTarget.src = "/placeholder.svg";
                           }}
                         />
@@ -418,7 +440,7 @@ export default function Header() {
                           transition={{ duration: 0.2 }}
                           className="absolute right-0 mt-2 z-50"
                         >
-                          <ProfilePopover user={user} />
+                          {userData && <ProfilePopover user={userData} />}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -451,3 +473,4 @@ export default function Header() {
     </>
   )
 }
+

@@ -20,6 +20,12 @@ interface ReservationPopoverProps {
     duration: string
     maxParticipants: number
     dates?: string[]
+    guideId?: string
+    guide?: {
+      id?: string
+      _id?: string
+      name?: string
+    }
   }
   isOpen?: boolean
   closeModal?: () => void
@@ -156,7 +162,10 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
         `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, "")}` : '',
       amount: (activity.price || 0) * (participants || 1),
       description: `Réservation pour ${activity.title || 'activité'}`,
-      orderId: `tour-${activity.id || 'unknown'}-${Date.now()}`
+      orderId: `order-${Date.now()}`,
+      tourId: String(activity.id) || '',
+      // Add guide ID from the activity or a default value
+      guideId: activity.guideId || activity.guide?.id || 'guide-id-required'
     };
     
     // Store reservation data in localStorage for retrieval after payment
@@ -384,7 +393,8 @@ export default function ReservationPopover({ activity, isOpen: externalIsOpen, c
                                 `${formData.countryCode}${formData.phoneNumber.replace(/\s/g, "")}` : '',
                               amount: (activity.price || 0) * (participants || 1),
                               description: `Réservation pour ${activity.title || 'activité'}`,
-                              orderId: `tour-${activity.id || 'unknown'}-${Date.now()}`
+                              orderId: `order-${Date.now()}`,
+                              tourId: String(activity.id) || ''
                             }}
                             onError={(message) => {
                               setPaymentError(message);

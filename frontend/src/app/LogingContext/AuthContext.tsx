@@ -4,6 +4,7 @@ import type React from "react"
 import { useRouter } from "next/navigation"
 
 import axios from "axios"
+import authService from "@/services/authService"
 
 // Définir les types pour le contexte d'authentification
 interface User {
@@ -158,44 +159,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("token")
       localStorage.removeItem("userId")
 
-      console.log("Tentative de connexion via le backend API...")
+      console.log("Tentative de connexion via authService...")
       
-      // Appel API direct pour la connexion
-      const response = await axios.post<ApiResponse>(
-        "http://localhost:5001/api/auth/login",
-        { email, password },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      )
+      // Utiliser authService pour la connexion
+      const response = await authService.login({ email, password })
 
-      console.log("Réponse de connexion reçue:", response.data)
+      console.log("Réponse de connexion reçue:", response)
 
       // Extraire les données de la réponse
-      const { token, user } = response.data
+      const { token, user } = response
       
       if (!token || !user) {
         throw new Error("La réponse du serveur ne contient pas de token ou d'informations utilisateur")
       }
 
       // S'assurer que l'utilisateur a toutes les propriétés nécessaires
-      const completeUser = {
+      const completeUser: User = {
         ...user,
-        _id: user._id || user.id,
-        id: user.id || user._id,
-        name: user.name || user.username || 'Utilisateur',
-        username: user.username || user.name || 'user',
-        email: user.email || 'user@example.com',
+        _id: user._id,
+        id: user._id, // Utiliser _id comme id
+        name: user.name,
+        username: user.name, // Utiliser name comme username par défaut
+        email: user.email,
         profileImage: user.profileImage || '/placeholder.svg?height=200&width=200',
-        userType: user.userType || 'touriste'
+        userType: user.userType
       }
 
       return await handleUserAuthentication({ token, user: completeUser })
     } catch (error: any) {
-      // Message d'erreur simple pour l'utilisateur - le système d'alerte s'en chargera
-      setError("Identifiants incorrects ou problème de connexion au serveur")
+      console.error("Erreur détaillée lors de la connexion:", error)
+      
+      // Vérifier si l'erreur est au format { error: true, message: string }
+      if (error && typeof error === 'object') {
+        if (error.message) {
+          setError(error.message)
+        } else if (error.error && error.message) {
+          setError(error.message)
+        } else {
+          setError("Identifiants incorrects ou problème de connexion au serveur")
+        }
+      } else {
+        // Fallback pour les erreurs de type string ou autres
+        setError(error.message || "Identifiants incorrects ou problème de connexion au serveur")
+      }
       
       // Retourner null au lieu de lancer une exception pour éviter que l'application ne plante
       return null
@@ -212,91 +218,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log("Données d'inscription reçues:", { ...userData, password: userData.password ? '***' : undefined })
 
-      // Préparer les données pour l'API
-      const formData = new FormData()
-
-      // Ajouter tous les champs texte au FormData
-      Object.keys(userData).forEach((key) => {
-        if (key !== "profileImage" && key !== "idCard" && key !== "certificate" && key !== "documents") {
-          if (Array.isArray(userData[key])) {
-            // Pour les tableaux, on ajoute chaque élément individuellement
-            userData[key].forEach((item: any) => {
-              formData.append(key, item)
-            })
-          } else if (userData[key] !== undefined && userData[key] !== null) {
-            formData.append(key, userData[key])
-          }
-        }
-      })
-
-      // Ajout des fichiers
-      if (userData.profileImage instanceof File) {
-        formData.append("profileImage", userData.profileImage)
+      // Utiliser authService pour l'inscription
+      console.log("Envoi des données d'inscription via authService")
+      
+      // Utiliser le token de vérification s'il existe
+      const verificationToken = userData.verificationToken || null;
+      
+      // Supprimer verificationToken de userData pour éviter la duplication
+      if (userData.verificationToken) {
+        delete userData.verificationToken;
       }
+      
+      const response = await authService.register(userData, verificationToken);
 
-      if (userData.idCard instanceof File) {
-        formData.append("idCard", userData.idCard)
-      }
+      console.log("Réponse d'inscription reçue:", response)
 
-      if (userData.certificate instanceof File) {
-        formData.append("certificate", userData.certificate)
-      }
-
-      if (Array.isArray(userData.documents)) {
-        userData.documents.forEach((doc: File) => {
-          if (doc instanceof File) {
-            formData.append("documents", doc)
-          }
-        })
-      }
-
-      console.log("Envoi des données d'inscription au format FormData")
-
-      // Envoyer les données au backend MongoDB
-      const response = await axios.post<ApiResponse>(
-        "http://localhost:5001/api/auth/register",
-        userData.profileImage instanceof File ? formData : userData,
-        {
-          headers: {
-            "Content-Type": userData.profileImage instanceof File ? "multipart/form-data" : "application/json",
-          },
-        },
-      )
-
-      console.log("Réponse d'inscription reçue:", response.data)
-
-      const { token, user } = response.data
+      const { token, user } = response
 
       if (!token || !user) {
         throw new Error("La réponse du serveur ne contient pas de token ou d'informations utilisateur")
       }
 
-      return await handleUserAuthentication({ token, user })
-    } catch (err: any) {
-      console.error("Erreur détaillée lors de l'inscription:", err)
-
-      let errorMessage = "Erreur lors de l'inscription"
-
-      if (err.response) {
-        // Le serveur a répondu avec un code d'erreur
-        console.error("Réponse d'erreur du serveur:", err.response.data)
-        errorMessage =
-          err.response.data.message ||
-          err.response.data.error ||
-          `Erreur ${err.response.status}: ${err.response.statusText}`
-      } else if (err.request) {
-        // La requête a été envoyée mais pas de réponse reçue
-        console.error("Aucune réponse reçue du serveur")
-        errorMessage =
-          "Aucune réponse du serveur. Vérifiez votre connexion réseau et que le backend est en cours d'exécution."
-      } else {
-        // Erreur lors de la configuration de la requête
-        console.error("Erreur de requête:", err.message)
-        errorMessage = err.message
+      // S'assurer que l'utilisateur a toutes les propriétés nécessaires
+      const completeUser: User = {
+        ...user,
+        _id: user._id,
+        id: user._id, // Utiliser _id comme id
+        name: user.name,
+        username: user.name, // Utiliser name comme username par défaut
+        email: user.email,
+        profileImage: user.profileImage || '/placeholder.svg?height=200&width=200',
+        userType: user.userType
       }
 
-      // Définir l'erreur dans l'état pour l'afficher à l'utilisateur
-      setError(errorMessage)
+      return await handleUserAuthentication({ token, user: completeUser })
+    } catch (error: any) {
+      console.error("Erreur détaillée lors de l'inscription:", error)
+      
+      // Utiliser le message d'erreur fourni par authService
+      setError(error.message || "Erreur lors de l'inscription")
       
       // Retourner null au lieu de lancer une exception pour éviter que l'application ne plante
       return null

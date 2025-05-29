@@ -1,4 +1,5 @@
 import axios from 'axios';
+import guideService from './guideService';
 
 // Use environment variable if available, otherwise fallback to localhost
 const API_URL = process.env.NEXT_PUBLIC_API_URL 
@@ -57,28 +58,84 @@ export const getUserById = async (userId: string): Promise<User | null> => {
       return null;
     }
     
-    const response = await axios.get<User>(`${API_URL}/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
+    // First try to get user from the users API
+    try {
+      const response = await axios.get<User>(`${API_URL}/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (response.data && response.data.name) {
+        console.log(`Successfully fetched user data for ${userId}:`, response.data.name);
+        return response.data;
       }
-    });
+    } catch (userError) {
+      console.log('User not found in users API, trying guides API...');
+    }
     
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching user:', error);
+    // If user not found, try to get guide information
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    try {
+      // Utiliser le bon endpoint pour les guides
+      const guideResponse = await axios.get(`${API_BASE_URL}/api/users/guides/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      console.log('Guide API response:', guideResponse.data);
+      
+      // Define an interface for the guide data to handle TypeScript errors
+      interface GuideData {
+        _id?: string;
+        id?: string;
+        name?: string;
+        email?: string;
+        profileImage?: string;
+      }
+      
+      const guideData = guideResponse.data as GuideData;
+      
+      if (guideData && guideData.name) {
+        console.log(`Successfully fetched guide data for ${userId}:`, guideData.name);
+        return {
+          id: guideData._id || guideData.id || userId,
+          _id: guideData._id || guideData.id || userId,
+          name: guideData.name,
+          email: guideData.email || `guide@guidini.com`,
+          role: 'guide',
+          profilePicture: guideData.profileImage
+        };
+      }
+    } catch (guideError) {
+      console.error('Guide not found in guides API:', guideError);
+    }
     
     // If we have a fallback user for this ID, return it
     if (fallbackUsers[userId as keyof typeof fallbackUsers]) {
-      console.log(`Using fallback data for user ${userId} after API error`);
+      console.log(`Using fallback data for user ${userId} after API errors`);
       return fallbackUsers[userId as keyof typeof fallbackUsers];
     }
     
     // Create a generic user if we don't have a specific fallback
+    console.warn(`Could not find real data for guide ${userId}, using generic placeholder`);
     return {
       id: userId,
       _id: userId,
-      name: `Guide ${userId.substring(0, 4)}`,
-      email: `guide${userId.substring(0, 4)}@guidini.com`,
+      name: `Guide Professionnel`,
+      email: `guide@guidini.com`,
+      role: 'guide'
+    };
+  } catch (error) {
+    console.error('Error in getUserById:', error);
+    
+    // Return a generic guide instead of showing the ID
+    return {
+      id: userId,
+      _id: userId,
+      name: `Guide Professionnel`,
+      email: `guide@guidini.com`,
       role: 'guide'
     };
   }
@@ -93,27 +150,46 @@ export const getCachedUserById = async (userId: string): Promise<User | null> =>
   
   // Check if user is in cache
   if (userCache.has(userId)) {
-    return userCache.get(userId) || null;
+    const cachedUser = userCache.get(userId);
+    console.log(`Using cached user data for ${userId}:`, cachedUser?.name);
+    return cachedUser || null;
   }
   
   try {
-    // Fetch user and store in cache
+    // Essayer d'abord d'utiliser directement le service de guide
+    try {
+      console.log('Trying to get guide data directly from guideService for ID:', userId);
+      const guideData = await guideService.getGuideById(userId);
+      
+      if (guideData && guideData.name && !guideData.error) {
+        console.log('Successfully retrieved guide data from guideService:', guideData.name);
+        
+        // Convert guide data to user format
+        const user: User = {
+          id: guideData._id,
+          _id: guideData._id,
+          name: guideData.name,
+          email: guideData.email,
+          role: 'guide',
+          profilePicture: guideData.profileImage || guideData.avatar
+        };
+        
+        // Cache the user data
+        userCache.set(userId, user);
+        return user;
+      }
+    } catch (guideError) {
+      console.log('Failed to get guide from guideService, falling back to getUserById');
+    }
+    
+    // Fallback to regular getUserById
     const user = await getUserById(userId);
     if (user) {
       userCache.set(userId, user);
     }
-    
     return user;
   } catch (error) {
     console.error('Error in getCachedUserById:', error);
-    
-    // If we have a fallback user for this ID, return and cache it
-    if (fallbackUsers[userId as keyof typeof fallbackUsers]) {
-      const fallbackUser = fallbackUsers[userId as keyof typeof fallbackUsers];
-      userCache.set(userId, fallbackUser);
-      return fallbackUser;
-    }
-    
     return null;
   }
 };

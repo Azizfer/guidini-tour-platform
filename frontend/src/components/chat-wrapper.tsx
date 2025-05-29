@@ -4,8 +4,8 @@ import React from "react"
 import dynamic from "next/dynamic"
 import { ChatProvider } from "@/contexts/chat-context"
 
-// Dynamically import to avoid casing issues
-const ChatInterface = dynamic(() => import("./Chat-Interface"), { ssr: false });
+// Import with consistent lowercase naming
+const ChatInterface = dynamic(() => import("./chat-interface"), { ssr: false });
 
 interface ChatWrapperProps {
   children: React.ReactNode

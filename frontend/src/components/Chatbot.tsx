@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Loader2, ArrowRight } from "lucide-react"
+import { X, Loader2, ArrowRight, ChevronUp, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -31,11 +31,66 @@ export default function Chatbot() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Slider state
+  const [showSlider, setShowSlider] = useState(false)
+
+  // Scroll functions for the slider
+  const scrollUp = () => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollBy({
+        top: -100,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const scrollDown = () => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollBy({
+        top: 100,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const scrollToBottom = () => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  };
+
+  // Check if scrolling is needed
+  const checkScrollable = () => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      setShowSlider(container.scrollHeight > container.clientHeight);
+    }
+  };
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    scrollToBottom();
+    // Check if we need to show the slider after messages update
+    setTimeout(checkScrollable, 100);
+  }, [messages]);
+  
+  // Add scroll event listener to show/hide slider
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      const handleScroll = () => {
+        checkScrollable();
+      };
+      
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
 
   // Focus input when chat opens
   useEffect(() => {
@@ -238,7 +293,7 @@ export default function Chatbot() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-[380px] h-[500px] flex flex-col"
+              className="w-full max-w-[320px] h-[400px] flex flex-col"
             >
               <Card className="border border-gray-200 shadow-lg rounded-xl overflow-hidden h-full flex flex-col">
                 <CardHeader className="bg-gradient-to-r from-teal-500 to-teal-600 py-2 px-4 text-white">
@@ -273,8 +328,27 @@ export default function Chatbot() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-0 flex-grow">
-                  <div className="h-full overflow-y-auto">
+                <CardContent className="p-0 flex-grow relative">
+                  {/* Slider controls */}
+                  {showSlider && (
+                    <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex flex-col gap-1 z-10">
+                      <button 
+                        className="w-6 h-6 rounded-full bg-teal-100 hover:bg-teal-200 flex items-center justify-center text-teal-700 shadow-sm transition-colors"
+                        onClick={scrollUp}
+                        aria-label="Scroll up"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="w-6 h-6 rounded-full bg-teal-100 hover:bg-teal-200 flex items-center justify-center text-teal-700 shadow-sm transition-colors"
+                        onClick={scrollDown}
+                        aria-label="Scroll down"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="h-full overflow-y-auto" ref={messagesContainerRef}>
                     <div className="p-3 space-y-3">
                       {messages.map((message) => (
                         <div

@@ -26,6 +26,11 @@ export default function LoginPage() {
   const router = useRouter()
   const { login, isLoading } = useAuth()
 
+  // Normalize email (trim whitespace and convert to lowercase)
+  const normalizeEmail = (email: string) => {
+    return email.trim().toLowerCase()
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -50,8 +55,16 @@ export default function LoginPage() {
     }
 
     try {
-      // Stocker le résultat de la connexion
-      const result = await login(email, password)
+      // Normaliser l'email avant de l'envoyer
+      const normalizedEmail = normalizeEmail(email)
+      
+      // Mettre à jour l'email dans l'interface si nécessaire
+      if (normalizedEmail !== email) {
+        setEmail(normalizedEmail)
+      }
+      
+      // Stocker le résultat de la connexion avec l'email normalisé
+      const result = await login(normalizedEmail, password)
       
       // Ne rediriger que si la connexion a réussi (result n'est pas null)
       if (result) {

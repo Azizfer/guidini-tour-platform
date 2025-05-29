@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, MapPin, Users, User } from "lucide-react"
+import axios from "axios"
+import { Tour } from "@/services/toursService"
 import Image from "next/image"
 import { getCachedUserById } from "@/services/userService"
 
@@ -34,23 +36,54 @@ export default function ActivityDetailsPopup({ activity, isOpen, onClose }: Acti
   // Fetch guide information when component mounts or activity changes
   useEffect(() => {
     const fetchGuideInfo = async () => {
-      if (activity.guideId) {
-        setIsLoading(true);
-        try {
-          const guideData = await getCachedUserById(activity.guideId);
-          if (guideData) {
-            setGuideName(guideData.name);
-          }
-        } catch (error) {
-          console.error("Error fetching guide information:", error);
-        } finally {
+      if (!activity.id) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Simple approach: Just use the guide name from the activity if it exists
+        if (activity.guide) {
+          setGuideName(activity.guide);
           setIsLoading(false);
+          return;
         }
+        
+        // Otherwise, try to get it from the guideId
+        if (activity.guideId) {
+          try {
+            // Define the expected response type
+            interface UserResponse {
+              _id?: string;
+              id?: string;
+              name: string;
+              email?: string;
+              profilePicture?: string;
+            }
+            
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+            const response = await axios.get<UserResponse>(`${API_URL}/users/${activity.guideId}`);
+            
+            // Now TypeScript knows that response.data is of type UserResponse
+            if (response.data && response.data.name) {
+              setGuideName(response.data.name);
+              return;
+            }
+          } catch (error) {
+            console.error('Error fetching guide information:', error);
+          }
+        }
+        
+        // If we get here, we couldn't find a guide name
+        setGuideName('Guide Professionnel');
+      } catch (error) {
+        console.error('Error in fetchGuideInfo:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchGuideInfo();
-  }, [activity.guideId]);
+  }, [activity.id, activity.guideId, activity.guide]);
 
   // Format price with proper spacing and currency
   const formatPrice = (price: number) => {

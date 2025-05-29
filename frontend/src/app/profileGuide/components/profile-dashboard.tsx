@@ -24,6 +24,7 @@ import { DashboardStats } from "./dashboard-stats";
 import ToursManagement from "./tours-management";
 import GuideGallery from "./guide-gallery";
 import GuideReservations from "./guide-reservations";
+import GuideStats from "./guide-stats";
 import Help from "./help";
 import guideService, { Guide } from "@/services/guideService";
 import preferenceService from "@/services/preferenceService";
@@ -33,6 +34,8 @@ interface EnhancedGuide extends Guide {
   rating?: number;
   reviewCount?: number;
   toursCount?: number;
+  completedToursCount?: number;
+  privateToursCount?: number;
   reservationsCount?: number;
   unreadNotifications?: number;
   unreadMessages?: number;
@@ -62,64 +65,113 @@ export default function ProfileDashboard() {
       const userId = user?.id || "682e10803651e668c119fbaf";
       console.log("Fetching profile for user ID:", userId);
       
-      // Fetch guide data from the API
-      console.log("Fetching guide data for user ID:", userId);
-      const guideData = await guideService.getGuideById(userId);
-      
-      // Fetch user preferences to get languages
-      let userLanguages: string[] = [];
+      // Vérifier que le backend est accessible
       try {
-        console.log("Fetching preferences for user ID:", userId);
-        const preferences = await preferenceService.getUserPreferences(userId);
-        userLanguages = preferences.languages || [];
-        console.log("User languages from preferences:", userLanguages);
-      } catch (prefError) {
-        console.error("Erreur lors de la récupération des préférences:", prefError);
-        // Use languages from guide data as fallback
-        userLanguages = guideData.languages || [];
-        console.log("Using languages from guide data as fallback:", userLanguages);
+        // Fetch guide data from the API
+        console.log("Fetching guide data for user ID:", userId);
+        const guideData = await guideService.getGuideById(userId);
+        console.log("Guide data received:", guideData);
+        
+        // Fetch user preferences to get languages
+        let userLanguages: string[] = [];
+        try {
+          console.log("Fetching preferences for user ID:", userId);
+          const preferences = await preferenceService.getUserPreferences(userId);
+          userLanguages = preferences.languages || [];
+          console.log("User languages from preferences:", userLanguages);
+        } catch (prefError) {
+          console.error("Erreur lors de la récupération des préférences:", prefError);
+          // Use languages from guide data as fallback
+          userLanguages = guideData.languages || [];
+          console.log("Using languages from guide data as fallback:", userLanguages);
+        }
+        
+        // Extract tour stats from guide data
+        const stats = guideData.stats || {};
+        console.log("Guide stats from API:", stats);
+        
+        // Transform the data to match our UI needs
+        const enhancedGuide: EnhancedGuide = {
+          ...guideData,
+          // Map backend fields to frontend expected fields
+          avatar: guideData.profileImage || "/placeholder.svg?height=100&width=100",
+          bio: guideData.description || "Aucune description disponible",
+          experience: guideData.yearsOfExperience || 0,
+          // Use languages from preferences
+          languages: userLanguages,
+          // Get stats from the stats object in the guide data
+          toursCount: stats.activeTours || 0,
+          completedToursCount: stats.completedTours || 0,
+          // For private tours, we'll use a default value of 0 since the backend doesn't provide it directly
+          // In a real implementation, you would need to add this to the backend API
+          privateToursCount: 0,
+          reservationsCount: stats.totalBookings || 0,
+          rating: stats.averageRating || 0,
+          reviewCount: guideData.reviewCount || 0,
+          unreadNotifications: guideData.unreadMessages || 0,
+          unreadMessages: guideData.unreadMessages || 0,
+          totalRevenue: guideData.totalRevenue || 0,
+          touristsCount: guideData.touristsCount || 0,
+          paymentsReceived: guideData.paymentsReceived || 0,
+          // Ne pas utiliser les gouvernorats couverts
+          location: guideData.location || "Tunisie"
+        };
+        
+        setGuide(enhancedGuide);
+      } catch (apiError: any) {
+        console.error("Erreur API lors du chargement du profil:", apiError);
+        
+        // Construire un message d'erreur détaillé
+        let errorMessage = "Impossible de charger les données du profil";
+        
+        if (apiError.message && apiError.message.includes("backend n'a pas répondu")) {
+          errorMessage = "Le serveur backend n'est pas accessible. Vérifiez qu'il est en cours d'exécution.";
+        } else if (apiError.response && apiError.response.status === 404) {
+          errorMessage = "Profil guide non trouvé. Vérifiez l'ID de l'utilisateur.";
+        } else if (apiError.response && apiError.response.status === 401) {
+          errorMessage = "Vous n'avez pas l'autorisation d'accéder à ce profil.";
+        }
+        
+        setError(errorMessage);
       }
-      
-      // Transform the data to match our UI needs
-      const enhancedGuide: EnhancedGuide = {
-        ...guideData,
-        // Map backend fields to frontend expected fields
-        avatar: guideData.profileImage || "/placeholder.svg?height=100&width=100",
-        bio: guideData.description || "Aucune description disponible",
-        experience: guideData.yearsOfExperience || 0,
-        // Use languages from preferences
-        languages: userLanguages,
-        // Default values for stats that might not be in the API response
-        rating: 4.8, // TODO: Replace with real data when available
-        reviewCount: 0,
-        toursCount: 0,
-        reservationsCount: 0,
-        unreadNotifications: 0,
-        unreadMessages: 0,
-        totalRevenue: 0,
-        touristsCount: 0,
-        paymentsReceived: 0,
-        // Ne pas utiliser les gouvernorats couverts
-        location: guideData.location || "Tunisie"
-      };
-      
-      setGuide(enhancedGuide);
     } catch (err) {
-      console.error("Erreur lors du chargement du profil:", err);
-      setError("Impossible de charger les données du profil. Veuillez réessayer.");
+      console.error("Erreur générale lors du chargement du profil:", err);
+      setError("Une erreur inattendue s'est produite. Veuillez réessayer plus tard.");
     } finally {
       setLoading(false);
     }
   };
   
-  // Nous n'utilisons plus d'écouteurs d'événements personnalisés
-  // car nous rechargeons la page après les mises à jour
-  
   // Charger les données du profil au chargement initial
   useEffect(() => {
     fetchGuideProfile();
+    
+    // Set up event listener for tour status changes
+    const handleTourStatusChange = (event: Event) => {
+      console.log('Tour status changed, refreshing guide profile');
+      // Force a refresh of the guide profile to get updated stats
+      fetchGuideProfile();
+      
+      // Store the tour status change in localStorage for the dashboard
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        localStorage.setItem('lastDashboardEvent', 'tourStatusChanged');
+        localStorage.setItem('lastTourStatus', customEvent.detail.status || '');
+        localStorage.setItem('previousTourStatus', customEvent.detail.previousStatus || 'active');
+      }
+    };
+    
+    // Listen for tour status changes
+    window.addEventListener('tourStatusChanged', handleTourStatusChange);
+    window.addEventListener('refreshDashboard', fetchGuideProfile);
+    
+    return () => {
+      // Clean up event listeners
+      window.removeEventListener('tourStatusChanged', handleTourStatusChange);
+      window.removeEventListener('refreshDashboard', fetchGuideProfile);
+    };
   }, [user]);
-  
+
   // Show loading state
   if (loading) {
     return (
@@ -136,16 +188,24 @@ export default function ProfileDashboard() {
   if (error || !guide) {
     return (
       <div className="flex min-h-screen bg-white justify-center items-center">
-        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Erreur de chargement</h2>
+        <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-lg">
+          <div className="text-red-500 text-6xl mb-6">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Erreur de chargement</h2>
           <p className="text-gray-600 mb-4">{error || "Données du profil non disponibles"}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-          >
-            Réessayer
-          </button>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => fetchGuideProfile()} 
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md"
+            >
+              Réessayer
+            </button>
+            <button 
+              onClick={() => window.location.href = '/'} 
+              className="px-6 py-2 text-gray-600 hover:text-blue-600 transition-colors text-sm"
+            >
+              Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -204,21 +264,7 @@ export default function ProfileDashboard() {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setActiveTab("messages")}
-                active={activeTab === "messages"}
-                className="flex items-center gap-3"
-              >
-                <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                <span>Messages</span>
-                {(guide.unreadMessages || 0) > 0 && (
-                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs text-white">
-                    {guide.unreadMessages}
-                  </span>
-                )}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+
           </SidebarMenu>
 
           <SidebarSeparator className="my-2" />
@@ -243,7 +289,10 @@ export default function ProfileDashboard() {
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-              <DashboardStats guide={guide} />
+              <GuideStats />
+              <div className="mt-8">
+                <DashboardStats guide={guide} />
+              </div>
             </div>
           )}
 
