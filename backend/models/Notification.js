@@ -20,7 +20,7 @@ const notificationSchema = new mongoose.Schema({
   // Type of notification
   type: {
     type: String,
-    enum: ['booking', 'payment', 'review', 'system'],
+    enum: ['booking', 'payment', 'review', 'system', 'reservation', 'booking_confirmation', 'booking_cancellation'],
     required: true
   },
   // Whether the notification has been read
@@ -58,6 +58,17 @@ const notificationSchema = new mongoose.Schema({
 
 // Add index for faster querying by recipient
 notificationSchema.index({ recipient: 1, createdAt: -1 });
+
+// Add compound index to prevent duplicate notifications within a short time period
+notificationSchema.index({ 
+  recipient: 1, 
+  type: 1, 
+  tourId: 1, 
+  createdAt: 1 
+}, { 
+  unique: true,
+  partialFilterExpression: { tourId: { $exists: true } }
+});
 
 // Check if the model already exists before creating it
 const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);

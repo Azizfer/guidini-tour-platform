@@ -7,21 +7,40 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, ArrowRight, Mail, Lock, Loader2 } from "lucide-react"
+import { Eye, EyeOff, ArrowRight, Mail, Lock, Loader2, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/LogingContext/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SocialLogin } from "@/components/auth/social-login"
 import NotificationAlert from "@/components/ui/notification-alert"
 
-export default function LoginPage() {
+
+function GuidiniLogo({ className = "" }: { className?: string }) {
+  return (
+    <div className={`flex items-center justify-center ${className}`}>
+      <img src="/logos/guidini-logo.svg" alt="Guidini" className="h-32 w-auto drop-shadow-2xl" />
+    </div>
+  )
+}
+
+// Simple decorative elements to replace 3D objects
+function SimpleDecoration({ className = "" }: { className?: string }) {
+  return (
+    <div className={`absolute ${className}`}>
+      <div className="w-4 h-4 rounded-full bg-white/20 backdrop-blur-sm"></div>
+    </div>
+  )
+}
+
+export default function TunisiaLoginPageClean() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")  
-  const [notification, setNotification] = useState<{type: "success" | "error" | "warning" | "info", title: string, message: string} | null>(null)
+  const [error, setError] = useState("")
+  const [notification, setNotification] = useState<{
+    type: "success" | "error" | "warning" | "info"
+    title: string
+    message: string
+  } | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
   const { login, isLoading } = useAuth()
@@ -40,7 +59,7 @@ export default function LoginPage() {
       setNotification({
         type: "warning",
         title: "Champ requis",
-        message: "Veuillez entrer votre email"
+        message: "Veuillez entrer votre email",
       })
       return
     }
@@ -49,39 +68,34 @@ export default function LoginPage() {
       setNotification({
         type: "warning",
         title: "Champ requis",
-        message: "Veuillez entrer votre mot de passe"
+        message: "Veuillez entrer votre mot de passe",
       })
       return
     }
 
     try {
-      // Normaliser l'email avant de l'envoyer
       const normalizedEmail = normalizeEmail(email)
-      
-      // Mettre à jour l'email dans l'interface si nécessaire
+
       if (normalizedEmail !== email) {
         setEmail(normalizedEmail)
       }
-      
-      // Stocker le résultat de la connexion avec l'email normalisé
+
       const result = await login(normalizedEmail, password)
-      
-      // Ne rediriger que si la connexion a réussi (result n'est pas null)
+
       if (result) {
         router.push("/")
       } else {
-        // Si login renvoie null, c'est une erreur
         setNotification({
           type: "error",
           title: "Échec de connexion",
-          message: "Email ou mot de passe incorrect"
+          message: "Email ou mot de passe incorrect",
         })
       }
     } catch (err: any) {
       setNotification({
         type: "error",
         title: "Erreur de connexion",
-        message: err.message || "Une erreur est survenue lors de la connexion"
+        message: err.message || "Une erreur est survenue lors de la connexion",
       })
     }
   }
@@ -94,153 +108,172 @@ export default function LoginPage() {
     router.push("/auth/forgot-password")
   }
 
+  const navigateToHome = () => {
+    router.push("/")
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <div className="w-full h-48 relative mb-6 flex items-center justify-center">
-          <img
-            src="/placeholder.svg?height=150&width=150&text=Guidini"
-            alt="Guidini Logo"
-            className="h-32 object-contain"
-          />
-        </div>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+      {/* Atmospheric effects */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
 
-        <Card className="w-full border shadow-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-teal-700">Connexion</CardTitle>
-            <CardDescription className="text-gray-600">Accédez à votre compte Guidini</CardDescription>
-          </CardHeader>
+      {/* Closure (X) button */}
+      <div className="absolute top-4 left-4 z-20">
+        <button
+          onClick={navigateToHome}
+          className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors text-white"
+          aria-label="Fermer la connexion"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-          <CardContent className="space-y-6">
-            <AnimatePresence>
-              {notification && (
+      {/* Simple decorative elements instead of 3D objects */}
+      <SimpleDecoration className="top-20 left-20" />
+      <SimpleDecoration className="top-32 right-24" />
+      <SimpleDecoration className="bottom-32 left-16" />
+      <SimpleDecoration className="bottom-24 right-32" />
+      <SimpleDecoration className="top-48 left-1/3" />
+      <SimpleDecoration className="bottom-48 right-1/4" />
+
+      <div className="min-h-screen flex items-center justify-center px-4 relative z-10">
+        <div className="w-full max-w-6xl flex items-center justify-center">
+          {/* Centered Login Form */}
+          <div className="w-full max-w-md mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="w-full"
+            >
+              {/* Logo Section */}
+              <div className="text-center mb-8">
                 <motion.div
-                  key="notification"
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.6 }}
+                  className="mb-10"
                 >
-                  <NotificationAlert
-                    type={notification.type}
-                    title={notification.title}
-                    message={notification.message}
-                    onClose={() => setNotification(null)}
-                  />
+                  <GuidiniLogo />
                 </motion.div>
-              )}
-            </AnimatePresence>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="votre.email@exemple.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 rounded-lg border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50 transition-all"
-                  />
-                </div>
+                <p className="text-white text-2xl font-semibold mb-2 drop-shadow-lg">CONNEXION</p>
+                <p className="text-blue-100 text-lg drop-shadow-md">Découvrez la Tunisie authentique</p>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                    Mot de passe
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={navigateToForgotPassword}
-                    className="text-xs font-medium text-teal-600 hover:text-teal-700"
+              {/* Form Content */}
+              <div className="space-y-6 bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20">
+                <AnimatePresence>
+                  {notification && (
+                    <motion.div
+                      key="notification"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <NotificationAlert
+                        type={notification.type}
+                        title={notification.title}
+                        message={notification.message}
+                        onClose={() => setNotification(null)}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <form onSubmit={handleLogin} className="space-y-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="email" className="text-sm font-medium text-white drop-shadow-md">
+                      Email
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="votre.email@exemple.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-14 rounded-2xl border-2 border-white/20 bg-white/95 backdrop-blur-sm focus:border-white focus:ring-2 focus:ring-white/30 focus:ring-opacity-50 transition-all text-gray-800 placeholder:text-gray-500 shadow-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password" className="text-sm font-medium text-white drop-shadow-md">
+                        Mot de passe
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={navigateToForgotPassword}
+                        className="text-xs font-medium text-white hover:text-blue-100 underline drop-shadow-md transition-colors"
+                      >
+                        Mot de passe oublié?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-12 pr-12 h-14 rounded-2xl border-2 border-white/20 bg-white/95 backdrop-blur-sm focus:border-white focus:ring-2 focus:ring-white/30 focus:ring-opacity-50 transition-all text-gray-800 placeholder:text-gray-500 shadow-xl"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Cacher le mot de passe" : "Montrer le mot de passe"}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="remember-me"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      className="data-[state=checked]:bg-white data-[state=checked]:border-white shadow-md"
+                    />
+                    <label
+                      htmlFor="remember-me"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-white drop-shadow-md"
+                    >
+                      Se souvenir de moi
+                    </label>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-14 bg-gradient-to-r from-white to-gray-100 hover:from-gray-100 hover:to-white text-blue-600 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300 font-semibold text-lg border-2 border-white/20"
                   >
-                    Mot de passe oublié?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11 rounded-lg border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50 transition-all"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Cacher le mot de passe" : "Montrer le mot de passe"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                    {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                    {isLoading ? "Connexion en cours..." : "Se connecter"}
+                  </Button>
+                </form>
+
+                <div className="text-center">
+                  <p className="text-white text-sm drop-shadow-md">
+                    Vous n'avez pas de compte?{" "}
+                    <Link
+                      href="/auth/login/register"
+                      className="text-white font-medium hover:text-blue-100 inline-flex items-center underline transition-colors drop-shadow-md"
+                    >
+                      S'inscrire <ArrowRight className="ml-1 h-3 w-3" />
+                    </Link>
+                  </p>
                 </div>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember-me"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  className="data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-700"
-                >
-                  Se souvenir de moi
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-11 bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium"
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLoading ? "Connexion en cours..." : "Se connecter"}
-              </Button>
-            </form>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Ou continuer avec</span>
-              </div>
-            </div>
-
-            <SocialLogin
-              onSuccess={() => router.push("/")}
-              onError={(error: Error) => setError(error.message || "Erreur de connexion sociale")}
-            />
-
-            <div className="text-center">
-              <p className="text-gray-600 text-sm">
-                Vous n'avez pas de compte?{" "}
-                <Link 
-                  href="/auth/login/register"
-                  className="text-teal-600 font-medium hover:text-teal-700 inline-flex items-center"
-                >
-                  S'inscrire <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

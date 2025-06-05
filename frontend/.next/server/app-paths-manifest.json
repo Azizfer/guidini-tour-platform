@@ -1,8 +1,6 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/Activities/page": "app/Activities/page.js",
+  "/page": "app/page.js",
   "/profileGuide/page": "app/profileGuide/page.js",
-  "/carte-interactive/page": "app/carte-interactive/page.js",
-  "/payment/callback/page": "app/payment/callback/page.js",
-  "/page": "app/page.js"
+  "/auth/login/page": "app/auth/login/page.js"
 }

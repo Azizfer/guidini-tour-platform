@@ -1,401 +1,182 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
-import { ChevronRight, ChevronLeft, Calendar, Clock, Users } from "lucide-react"
+import { useRef, useEffect, useState } from "react"
+import { motion } from "framer-motion"
+import { ChevronRight, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 import Link from "next/link"
-import Image from "next/image"
-import { useToursStore } from "@/services/toursService"
-import SectionDivider from "@/components/section-divider"
+import { Tour, getAllTours } from "@/services/toursService"
+import { useRouter } from "next/navigation"
 
 export default function PopularActivities() {
-  const { tours } = useToursStore()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [activities, setActivities] = useState<Tour[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  // Define the Activity type
-  type Activity = {
-    id: string
-    name: string
-    description: string
-    image: string
-    tags: string[]
-    duration: string
-    groupSize: string
-    startTime: string
-    price: string
-  }
-
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [currentActivity, setCurrentActivity] = useState(0)
-  const [isHovering, setIsHovering] = useState(false)
-  const [direction, setDirection] = useState(0)
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
-  const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Scroll animation references
-  const sectionRef = useRef(null)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "end start"],
-  })
-
-  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [0, 1, 1, 0])
-  const y = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [100, 0, 0, 100])
-  const scale = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [0.8, 1, 1, 0.8])
-
-  // Prepare activities data
   useEffect(() => {
-    // Filtrer les tours actifs, les trier par date de création (les plus récents d'abord),
-    // prendre les 4 premiers, puis les convertir au format attendu par le composant
-    const publicTours = tours
-      .filter((tour) => tour.tourStatus === 'active')
-      .sort((a, b) => {
-        // Convert dates to timestamps for comparison
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        // Sort in descending order (newest first)
-        return dateB - dateA;
+    const fetchActivities = async () => {
+      try {
+        setIsLoading(true)
+        const tours = await getAllTours()
+        // Filter for active tours only and limit to 6 items
+        const activeActivities = tours
+          .filter(tour => tour.tourStatus === 'active')
+          .slice(0, 4)
+        setActivities(activeActivities)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching activities:', err)
+        setError('Impossible de charger les activités')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchActivities()
+  }, [])
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 300
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
       })
-      .slice(0, 4) // Take only the 4 most recent tours
-      .map((tour) => ({
-        id: tour._id || tour.id || '', // Use the actual MongoDB ObjectId
-        name: tour.title,
-        description: tour.description,
-        image: tour.image || "",
-        tags: Array.isArray(tour.category) ? tour.category : (tour.category ? [tour.category] : ["Visite"]),
-        duration: tour.duration || "3 heures",
-        groupSize: `${tour.maxParticipants || 10} personnes`,
-        startTime: tour.time || "Flexible",
-        price: typeof tour.price === "number" ? `${tour.price} TND` : tour.price || "65 TND",
-      }))
-
-    // Si aucun tour public n'est disponible, utiliser des activités par défaut
-    const defaultActivities =
-      publicTours.length > 0
-        ? publicTours
-        : [
-            {
-              id: "default1",
-              name: "Camping à Ain Drahem",
-              description:
-                "Découvrez la beauté naturelle des forêts tunisiennes avec une expérience de camping inoubliable au cœur de la nature",
-              image: "",
-              tags: ["Nature", "Aventure", "Détente"],
-
-              duration: "2 jours",
-              groupSize: "8 personnes",
-              startTime: "9h00",
-              price: "120 TND",
-            },
-            {
-              id: "default2",
-              name: "Excursion dans le désert",
-              description:
-                "Aventure inoubliable dans le Sahara tunisien avec balade à dos de chameau et nuit sous les étoiles",
-              image: "",
-              tags: ["Aventure", "Nature", "Expérience"],
-
-              duration: "1 jour",
-              groupSize: "12 personnes",
-              startTime: "7h30",
-              price: "95 TND",
-            },
-            {
-              id: "default3",
-              name: "Plongée à Tabarka",
-              description:
-                "Explorez les fonds marins spectaculaires de la Méditerranée avec des instructeurs professionnels",
-              image: "",
-              tags: ["Mer", "Sport", "Découverte"],
-              rating: 4.9,
-              reviews: 87,
-              duration: "4 heures",
-              groupSize: "6 personnes",
-              startTime: "10h00",
-              price: "85 TND",
-            },
-          ]
-
-    setActivities(defaultActivities)
-  }, [tours])
-
-  // Navigation functions
-  const nextActivity = useCallback(() => {
-    if (activities.length === 0) return
-    setDirection(1)
-    setCurrentActivity((prev) => (prev + 1) % activities.length)
-  }, [activities])
-
-  const prevActivity = useCallback(() => {
-    if (activities.length === 0) return
-    setDirection(-1)
-    setCurrentActivity((prev) => (prev - 1 + activities.length) % activities.length)
-  }, [activities])
-
-  // Rotation automatique des activités (pause on hover)
-  useEffect(() => {
-    if (isHovering || !isAutoPlaying || activities.length === 0) return
-
-    autoPlayRef.current = setInterval(() => {
-      nextActivity()
-    }, 6000)
-
-    return () => {
-      if (autoPlayRef.current) {
-        clearInterval(autoPlayRef.current)
-      }
     }
-  }, [isHovering, isAutoPlaying, nextActivity, activities])
-
-  // Handle user interaction
-  const handleUserInteraction = () => {
-    setIsAutoPlaying(false)
-    if (autoPlayRef.current) {
-      clearInterval(autoPlayRef.current)
-    }
-  }
-
-  // Animation variants
-  const variants = {
-    enter: (direction: number) => {
-      return {
-        x: direction > 0 ? 1000 : -1000,
-        opacity: 0,
-      }
-    },
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => {
-      return {
-        zIndex: 0,
-        x: direction < 0 ? 1000 : -1000,
-        opacity: 0,
-      }
-    },
-  }
-
-  if (activities.length === 0) {
-    return null
   }
 
   return (
-    <>
-      <SectionDivider variant="wave" color="white" />
+    <section className="py-12 bg-gray-50">
+      <div className="container mx-auto px-4 flex flex-col items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-between items-center mb-8 w-full"
+        >
+          <div>
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">Profitez de ces activités</h2>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full w-10 h-10 border-gray-300"
+              onClick={() => scroll("left")}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              size="icon"
+              className="rounded-full w-10 h-10 bg-gray-900 hover:bg-gray-800"
+              onClick={() => scroll("right")}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </motion.div>
 
-      <motion.section ref={sectionRef} className="py-20 bg-gradient-to-b from-white to-slate-50" style={{ opacity, y }}>
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-12 fade-in"
-          >
-            <Badge className="mb-3 px-3 py-1 text-xs font-medium bg-slate-100 text-slate-800 rounded-full">
-              Activités Populaires
-            </Badge>
-            <h2 className="text-3xl font-bold mb-3 text-slate-900 tracking-tight">
-              Vivez des Expériences Inoubliables
-            </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto text-base">
-              Découvrez les meilleures expériences à vivre lors de votre séjour en Tunisie
-            </p>
-          </motion.div>
-
-          <motion.div style={{ scale }} transition={{ duration: 0.5 }} className="relative max-w-5xl mx-auto">
-            {/* Left navigation button */}
-            <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 z-50">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
-                onClick={() => {
-                  prevActivity()
-                  handleUserInteraction()
-                }}
-              >
-                <ChevronLeft className="h-5 w-5" />
-                <span className="sr-only">Activité précédente</span>
-              </Button>
-            </div>
-
-            {/* Right navigation button */}
-            <div className="absolute top-1/2 -right-16 transform -translate-y-1/2 z-50">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
-                onClick={() => {
-                  nextActivity()
-                  handleUserInteraction()
-                }}
-              >
-                <ChevronRight className="h-5 w-5" />
-                <span className="sr-only">Activité suivante</span>
-              </Button>
-            </div>
-            
-            <Card className="overflow-hidden max-w-5xl mx-auto border-none shadow-lg rounded-xl bg-white">
-              <CardContent className="p-0">
-                <div
-                  className="relative h-[400px] md:h-[450px]"
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                >
-                  <AnimatePresence initial={false} custom={direction} mode="wait">
-                    <motion.div
-                      key={currentActivity}
-                      custom={direction}
-                      variants={variants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={{
-                        x: { type: "spring", stiffness: 300, damping: 30 },
-                        opacity: { duration: 0.2 },
-                      }}
-                      className="absolute inset-0"
-                    >
-                      <div className="relative h-full overflow-hidden group">
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-300 z-10"></div>
-                        <motion.div
-                          initial={{ scale: 1 }}
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ duration: 6 }}
-                          className="h-full"
-                        >
-                          <Image
-                            src={activities[currentActivity].image || "/placeholder.svg"}
-                            alt={activities[currentActivity].name}
-                            fill
-                            className="object-cover"
-                            priority
-                          />
-                        </motion.div>
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20"></div>
-
-                        {/* Price tag */}
-                        <div className="absolute top-6 right-6 z-30">
-                          <div className="px-3 py-1.5 rounded-sm text-base font-medium bg-white/90 dark:bg-zinc-900/90 text-zinc-900 dark:text-white backdrop-blur-sm border-l-2 border-blue-500 transition-all duration-300">
-                            {activities[currentActivity].price}
-                          </div>
-                        </div>
-
-                        <div className="absolute bottom-0 left-0 p-8 md:p-10 w-full pl-20 pr-20 z-30">
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                            className="stagger-fade-in"
-                          >
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {activities[currentActivity].tags.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="secondary"
-                                  className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-sm"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-
-                            <h3 className="text-xl font-bold text-white mb-3">{activities[currentActivity].name}</h3>
-                            <p className="text-white/90 mb-4 max-w-2xl text-sm">
-                              {activities[currentActivity].description}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6">
-
-
-                              <div className="flex items-center text-white/90">
-                                <Clock className="h-4 w-4 mr-1.5" />
-                                <span>{activities[currentActivity].duration}</span>
-                              </div>
-
-                              <div className="flex items-center text-white/90">
-                                <Users className="h-4 w-4 mr-1.5" />
-                                <span>Max {activities[currentActivity].groupSize}</span>
-                              </div>
-
-                              <div className="flex items-center text-white/90">
-                                <Calendar className="h-4 w-4 mr-1.5" />
-                                <span>Départ: {activities[currentActivity].startTime}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-3 mb-8">
-                              <Button
-                                asChild
-                                className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 text-sm px-4 py-2 mb-4"
-                              >
-                                <Link href="/Activities">
-                                  Explorer cette activité
-                                  <ChevronRight className="ml-2 h-4 w-4" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </motion.div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-
-
-
-                  {/* Indicateurs de navigation */}
-                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex space-x-2 z-30">
-                    {activities.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setDirection(index > currentActivity ? 1 : -1)
-                          setCurrentActivity(index)
-                          handleUserInteraction()
-                        }}
-                        className={cn(
-                          "transition-all duration-300 h-2 rounded-full",
-                          currentActivity === index ? "bg-white w-8" : "bg-white/40 hover:bg-white/60 w-2",
-                        )}
-                        aria-label={`Voir activité ${index + 1}`}
-                      />
-                    ))}
+        <div
+          ref={scrollRef}
+          className="flex gap-5 overflow-x-auto scrollbar-hide pb-3 px-4 w-full ml-0 max-w-[1200px] mx-auto"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {isLoading ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, index) => (
+              <div key={`skeleton-${index}`} className="flex-shrink-0 w-[280px]">
+                <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
+                  <div className="relative h-[170px] bg-gray-200"></div>
+                  <div className="p-4">
+                    <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+                    <div className="flex justify-between items-center">
+                      <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex justify-center mt-12 fade-in"
-          >
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = '/Activities';
-              }}
-            >
-              <span className="inline-flex items-center">
-                Voir toutes les activités
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </span>
-            </Button>
-          </motion.div>
+              </div>
+            ))
+          ) : error ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <p className="text-red-500">{error}</p>
+            </div>
+          ) : activities.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <p className="text-gray-500">Aucune activité disponible pour le moment</p>
+            </div>
+          ) : (
+            activities.map((activity, index) => (
+              <motion.div
+                key={activity._id || activity.id || index}
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className="flex-shrink-0 w-[280px]"
+              >
+                <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
+                  <div className="relative h-[170px] overflow-hidden">
+                    <img
+                      src={activity.image || "/placeholder.svg"}
+                      alt={activity.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-base font-bold text-gray-900 mb-1">{activity.title}</h3>
+                    <p className="text-sm text-gray-600 mb-1">{activity.location || activity.category}</p>
+                    
+                    {/* Date and Time information */}
+                    <div className="flex items-center text-xs text-gray-500 mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{activity.date}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-2 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{activity.time}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-lg font-bold text-gray-900">{activity.price}DT</span>
+                        <span className="text-sm text-gray-600 ml-1">/Personne</span>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          console.log('Clicking reserve with activity:', activity);
+                          router.push(`/Activities?activityId=${activity._id || activity.id}`);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full px-4 py-1 h-auto"
+                      >
+                        Réserver
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
-      </motion.section>
-    </>
+
+        <div className="flex justify-center mt-8">
+          <Button
+            className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-6 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
+            onClick={() => {
+              router.push("/Activities")
+            }}
+          >
+            Voir toutes les activités
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+    </section>
   )
 }

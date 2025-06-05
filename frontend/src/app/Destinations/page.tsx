@@ -14,7 +14,6 @@ export default function DestinationPage() {
           <main className="flex-1">
             <Destinations /> 
           </main>
-          <Footer />
           <ChatButton />
         </div>
       </ThemeProvider>

@@ -1,10 +1,9 @@
 "use client"
-
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import type { UserType } from "@/components/sign-up-process"
 import { UserIcon, MapIcon } from "lucide-react"
-import HandWrittenTitle from "@/components/ui/hand-written-title"
+
+export type UserType = "touriste" | "guide" | null
 
 interface UserTypeStepProps {
   name: string
@@ -23,78 +22,83 @@ export default function UserTypeStep({ name, userType, setUserType, onNext, onPr
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <HandWrittenTitle
-        title={`Bonjour, ${name}!`}
-        subtitle="Quel type d'utilisateur êtes-vous?"
-        size="sm"
-        className="mb-6"
-      />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+      {/* Atmospheric effects */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="space-y-6 w-full"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={() => setUserType("touriste")}
-            className={`p-4 rounded-xl border-2 transition-all duration-300 flex flex-col items-center ${
-              userType === "touriste"
-                ? "border-teal-500 bg-teal-50 shadow-md"
-                : "border-gray-200 hover:border-teal-200 hover:bg-gray-50"
-            }`}
+      <div className="min-h-screen flex items-start justify-center px-4 pt-20 pb-8 relative z-10">
+        <div className="w-full max-w-sm mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-full"
           >
-            <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-colors ${
-                userType === "touriste"
-                  ? "bg-gradient-to-br from-teal-500 to-teal-400 text-white shadow-md"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-            >
-              <UserIcon className="h-8 w-8" />
+            {/* Header Section */}
+            <div className="text-center mb-8">
+              <p className="text-white text-2xl font-semibold mb-2 drop-shadow-lg">Bonjour, {name}!</p>
+              <p className="text-blue-100 text-base drop-shadow-md">Quel type d'utilisateur êtes-vous?</p>
             </div>
-            <h3 className="text-base font-medium">Touriste</h3>
-            <p className="text-xs text-gray-500 mt-1 text-center">Je cherche des guides</p>
-          </button>
 
-          <button
-            onClick={() => setUserType("guide")}
-            className={`p-4 rounded-xl border-2 transition-all duration-300 flex flex-col items-center ${
-              userType === "guide"
-                ? "border-teal-500 bg-teal-50 shadow-md"
-                : "border-gray-200 hover:border-teal-200 hover:bg-gray-50"
-            }`}
-          >
-            <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-colors ${
-                userType === "guide"
-                  ? "bg-gradient-to-br from-teal-500 to-teal-400 text-white shadow-md"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-            >
-              <MapIcon className="h-8 w-8" />
+            {/* Form Content */}
+            <div className="space-y-6 backdrop-blur-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setUserType("touriste")}
+                  className={`p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center backdrop-blur-sm ${
+                    userType === "touriste"
+                      ? "border-white bg-white/20 shadow-xl"
+                      : "border-white/30 bg-white/10 hover:border-white/50 hover:bg-white/15"
+                  }`}
+                >
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-colors ${
+                      userType === "touriste" ? "bg-white text-blue-700 shadow-lg" : "bg-white/20 text-white"
+                    }`}
+                  >
+                    <UserIcon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-base font-medium text-white drop-shadow-md">Touriste</h3>
+                  <p className="text-xs text-white/70 mt-1 text-center drop-shadow-sm">Je cherche des guides</p>
+                </button>
+
+                <button
+                  onClick={() => setUserType("guide")}
+                  className={`p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center backdrop-blur-sm ${
+                    userType === "guide"
+                      ? "border-white bg-white/20 shadow-xl"
+                      : "border-white/30 bg-white/10 hover:border-white/50 hover:bg-white/15"
+                  }`}
+                >
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 transition-colors ${
+                      userType === "guide" ? "bg-white text-blue-700 shadow-lg" : "bg-white/20 text-white"
+                    }`}
+                  >
+                    <MapIcon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-base font-medium text-white drop-shadow-md">Guide</h3>
+                  <p className="text-xs text-white/70 mt-1 text-center drop-shadow-sm">Je propose mes services</p>
+                </button>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  onClick={handleNext}
+                  disabled={!userType}
+                  className={`w-full h-12 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-base ${
+                    userType
+                      ? "bg-gradient-to-r from-white to-gray-100 hover:from-gray-100 hover:to-white text-blue-600"
+                      : "bg-white/20 text-white/50 cursor-not-allowed"
+                  }`}
+                >
+                  Continuer
+                </Button>
+              </div>
             </div>
-            <h3 className="text-base font-medium">Guide</h3>
-            <p className="text-xs text-gray-500 mt-1 text-center">Je propose mes services</p>
-          </button>
+          </motion.div>
         </div>
-
-        <div className="pt-4">
-          <Button
-            onClick={handleNext}
-            disabled={!userType}
-            className={`w-full py-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium ${
-              userType
-                ? "bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            Continuer
-          </Button>
-        </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

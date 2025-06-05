@@ -20,17 +20,17 @@ export default function NotificationCard({
     switch (notification.type) {
       case 'booking':
       case 'booking_confirmation':
-        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
       case 'booking_cancellation':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-600" />;
       case 'review':
-        return <Star className="h-4 w-4 text-yellow-500" />;
+        return <Star className="h-4 w-4 text-amber-500" />;
       case 'payment':
-        return <CreditCard className="h-4 w-4 text-green-500" />;
+        return <CreditCard className="h-4 w-4 text-blue-600" />;
       case 'system':
-        return <AlertCircle className="h-4 w-4 text-purple-500" />;
+        return <AlertCircle className="h-4 w-4 text-blue-600" />;
       default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
+        return <Bell className="h-4 w-4 text-blue-600" />;
     }
   };
 
@@ -39,48 +39,48 @@ export default function NotificationCard({
     switch (notification.type) {
       case 'booking':
       case 'booking_confirmation':
-        return "border-blue-500";
+        return "border-teal-400";
       case 'booking_cancellation':
-        return "border-red-500";
+        return "border-red-400";
       case 'payment':
-        return "border-green-500";
+        return "border-amber-400";
       case 'review':
-        return "border-yellow-500";
+        return "border-amber-300";
       case 'system':
-        return "border-purple-500";
+        return "border-blue-400";
       default:
-        return "border-gray-300";
+        return "border-blue-500";
     }
   };
 
   // Get background color based on read status and type
   const getBackgroundColor = () => {
     if (!notification.read) {
-      return "bg-blue-50 hover:bg-blue-100";
+      return "bg-blue-800/30 hover:bg-blue-800/40";
     }
     
     switch (notification.type) {
       case 'booking_confirmation':
-        return "hover:bg-blue-50";
+        return "hover:bg-blue-800/30";
       case 'booking_cancellation':
-        return "hover:bg-red-50";
+        return "hover:bg-red-900/30";
       case 'payment':
-        return "hover:bg-green-50";
+        return "hover:bg-green-900/30";
       case 'review':
-        return "hover:bg-yellow-50";
+        return "hover:bg-amber-900/30";
       case 'system':
-        return "hover:bg-purple-50";
+        return "hover:bg-purple-900/30";
       default:
-        return "hover:bg-gray-50";
+        return "hover:bg-blue-800/20";
     }
   };
 
   return (
     <div
       className={cn(
-        "px-3 py-2 border-b border-gray-100 last:border-0 transition-all duration-200 cursor-pointer",
+        "px-3 py-2 border-b border-blue-800 last:border-0 transition-all duration-200 cursor-pointer",
         getBackgroundColor(),
-        !notification.read && "font-medium shadow-sm",
+        !notification.read && "font-medium",
         className
       )}
       onClick={() => onClick && onClick(notification)}
@@ -98,31 +98,31 @@ export default function NotificationCard({
                 )}
               />
               {!notification.read && (
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-500 rounded-full border border-white"></span>
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-teal-400 rounded-full border border-blue-900"></span>
               )}
             </div>
           ) : (
             <div className={cn(
-              "h-8 w-8 rounded-full flex items-center justify-center border-2",
+              "relative h-8 w-8 rounded-full flex items-center justify-center border-2",
               getAccentColor(),
-              !notification.read ? "bg-white" : "bg-gray-50"
+              !notification.read ? "bg-blue-800/50" : "bg-blue-900/30"
             )}>
               {getNotificationIcon()}
               {!notification.read && (
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-500 rounded-full border border-white"></span>
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-teal-400 rounded-full border border-blue-900"></span>
               )}
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
-            <h4 className="font-semibold text-sm text-gray-900 truncate">{notification.title}</h4>
-            <div className="flex items-center text-xs text-gray-500 whitespace-nowrap ml-2">
+            <h4 className="font-semibold text-sm text-white truncate">{notification.title}</h4>
+            <div className="flex items-center text-xs text-blue-300/70 whitespace-nowrap ml-2">
               <Clock className="h-3 w-3 mr-1" />
               <span>{notification.time}</span>
             </div>
           </div>
-          <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{notification.description}</p>
+          <p className="text-xs text-blue-200/80 mt-0.5 line-clamp-2">{notification.description}</p>
           
           {/* Action button for certain notification types */}
           {(notification.type === 'booking' || notification.type === 'payment') && (
@@ -130,9 +130,9 @@ export default function NotificationCard({
               <button 
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-md",
-                  notification.type === 'booking' ? "text-blue-600 bg-blue-50 hover:bg-blue-100" :
-                  notification.type === 'payment' ? "text-green-600 bg-green-50 hover:bg-green-100" :
-                  "text-gray-600 bg-gray-50 hover:bg-gray-100"
+                  notification.type === 'booking' ? "text-teal-300 bg-teal-500/20 hover:bg-teal-500/30" :
+                  notification.type === 'payment' ? "text-amber-300 bg-amber-500/20 hover:bg-amber-500/30" :
+                  "text-blue-300 bg-blue-700/30 hover:bg-blue-700/40"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();

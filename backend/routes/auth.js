@@ -884,4 +884,73 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Route pour rafraîchir le token JWT
+router.post('/refresh-token', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token requis' });
+    }
+    
+    // Vérifier et décoder le token expiré
+    let decodedToken;
+    try {
+      // Utiliser l'option ignoreExpiration pour permettre la vérification des tokens expirés
+      decodedToken = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', { ignoreExpiration: true });
+    } catch (tokenError) {
+      // Si l'erreur n'est pas liée à l'expiration, rejeter la demande
+      if (tokenError.name !== 'TokenExpiredError') {
+        console.error('Erreur de vérification du token (non liée à l\'expiration):', tokenError);
+        return res.status(400).json({ error: 'Token invalide', details: tokenError.message });
+      }
+      
+      // Pour les tokens expirés, on continue avec le décodage
+      try {
+        decodedToken = jwt.decode(token);
+      } catch (decodeError) {
+        console.error('Erreur de décodage du token:', decodeError);
+        return res.status(400).json({ error: 'Impossible de décoder le token', details: decodeError.message });
+      }
+    }
+    
+    // Vérifier que le token contient un ID utilisateur
+    const userId = decodedToken._id || decodedToken.userId || decodedToken.id;
+    if (!userId) {
+      return res.status(400).json({ error: 'Token invalide: ID utilisateur manquant' });
+    }
+    
+    // Trouver l'utilisateur dans la base de données
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+    
+    // Générer un nouveau token JWT
+    const newToken = jwt.sign(
+      { _id: user._id, userType: user.userType },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1d' }
+    );
+    
+    console.log(`Token rafraîchi avec succès pour l'utilisateur: ${user._id}`);
+    
+    // Renvoyer le nouveau token
+    res.status(200).json({
+      token: newToken,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        userType: user.userType,
+        profileImage: user.profileImage
+      },
+      message: 'Token rafraîchi avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur lors du rafraîchissement du token:', error);
+    res.status(500).json({ error: error.message || 'Erreur lors du rafraîchissement du token' });
+  }
+});
+
 module.exports = router;

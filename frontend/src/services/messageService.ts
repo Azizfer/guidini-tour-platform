@@ -1,8 +1,17 @@
 import axios from 'axios';
 
-// Use both relative URL and direct backend URL to ensure connectivity
-const API_URL = '/api';
-const DIRECT_API_URL = 'http://localhost:5001/api';
+// Use environment variable for API URL with fallback to localhost
+const getApiUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+};
+
+// Helper to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Authorization': `Bearer ${token || ''}`
+  };
+};
 
 export interface Message {
   _id?: string;
@@ -25,10 +34,27 @@ const messageService = {
   // Récupérer les conversations d'un utilisateur
   getUserConversations: async (): Promise<Conversation[]> => {
     try {
-      const response = await axios.get<Conversation[]>(`${API_URL}/messages/conversations`);
-      return response.data || [];
-    } catch (error) {
-      console.error('Erreur lors de la récupération des conversations:', error);
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return [];
+      }
+      
+      const apiUrl = getApiUrl();
+      
+      // Add timeout to avoid hanging requests
+      const response = await axios.get<Conversation[]>(`${apiUrl}/api/messages/conversations`, {
+        headers: getAuthHeaders(),
+        timeout: 10000 // 10 second timeout
+      });
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        return [];
+      }
+    } catch (error: any) {
+      // Silent fail
       return [];
     }
   },
@@ -36,10 +62,14 @@ const messageService = {
   // Récupérer les messages d'une conversation
   getConversationMessages: async (conversationId: string): Promise<Message[]> => {
     try {
-      const response = await axios.get<Message[]>(`${API_URL}/messages/conversation/${conversationId}`);
+      console.log('🔄 Fetching messages for conversation:', conversationId);
+      const response = await axios.get<Message[]>(`${getApiUrl()}/api/messages/conversation/${conversationId}`, {
+        headers: getAuthHeaders()
+      });
+      console.log('✅ Fetched messages:', response.data?.length || 0);
       return response.data || [];
     } catch (error) {
-      console.error(`Erreur lors de la récupération des messages de la conversation ${conversationId}:`, error);
+      console.error(`❌ Error fetching messages for conversation ${conversationId}:`, error);
       return [];
     }
   },
@@ -47,13 +77,17 @@ const messageService = {
   // Envoyer un message
   sendMessage: async (recipientId: string, content: string): Promise<Message> => {
     try {
-      const response = await axios.post<Message>(`${API_URL}/messages/send`, {
+      console.log('📤 Sending message to recipient:', recipientId);
+      const response = await axios.post<Message>(`${getApiUrl()}/api/messages/send`, {
         recipientId,
         content
+      }, {
+        headers: getAuthHeaders()
       });
+      console.log('✅ Message sent successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de l\'envoi du message:', error);
+      console.error('❌ Error sending message:', error);
       throw error;
     }
   },
@@ -61,12 +95,16 @@ const messageService = {
   // Créer ou récupérer une conversation entre deux utilisateurs
   getOrCreateConversation: async (userId1: string, userId2: string): Promise<Conversation> => {
     try {
-      const response = await axios.post<Conversation>(`${API_URL}/messages/conversations`, {
+      console.log('🔄 Creating/fetching conversation between users:', userId1, userId2);
+      const response = await axios.post<Conversation>(`${getApiUrl()}/api/messages/conversations`, {
         participants: [userId1, userId2]
+      }, {
+        headers: getAuthHeaders()
       });
+      console.log('✅ Conversation created/fetched successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la création/récupération de la conversation:', error);
+      console.error('❌ Error creating/fetching conversation:', error);
       throw error;
     }
   },
@@ -74,10 +112,18 @@ const messageService = {
   // Marquer les messages comme lus
   markMessagesAsRead: async (conversationId: string): Promise<void> => {
     try {
-      await axios.put(`${API_URL}/messages/read/${conversationId}`);
+      console.log('💬 Marking messages as read for conversation:', conversationId);
+      // Use the correct API URL format with /api prefix
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      await axios.put(`${apiUrl}/api/messages/read/${conversationId}`, {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      console.log('✅ Messages marked as read successfully');
       return;
     } catch (error) {
-      console.error(`Erreur lors du marquage des messages comme lus:`, error);
+      console.error('❌ Error marking messages as read:', error);
       // Silently fail instead of throwing
       return;
     }

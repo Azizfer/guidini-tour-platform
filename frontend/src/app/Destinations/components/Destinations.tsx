@@ -6,7 +6,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MapPin, Calendar, Search, ArrowRight, Filter, ChevronDown } from "lucide-react"
+import { MapPin, Calendar, Search, ArrowRight, Filter, ChevronDown, Compass, Palmtree, Waves } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Footer from "@/components/footer"
@@ -135,15 +135,38 @@ export default function DestinationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
-      <div className="container mx-auto px-4 py-12">
-        <div className="mb-12">
-          <h1 className="text-3xl font-bold text-center mb-4">Découvrez la Tunisie</h1>
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-amber-50 relative overflow-hidden">
+      {/* Floating tourism elements */}
+      <div className="absolute top-20 right-12 opacity-10">
+        <Waves className="h-32 w-32 text-blue-400" />
+      </div>
+      <div className="absolute bottom-20 left-12 opacity-10">
+        <Palmtree className="h-28 w-28 text-teal-400" />
+      </div>
+      <div className="absolute top-1/2 left-8 opacity-10">
+        <Compass className="h-24 w-24 text-amber-400" />
+      </div>
+
+      <div className="container mx-auto px-4 py-12 relative z-10">
+        <div className="mb-12 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center justify-center mb-4"
+          >
+            <div className="p-3 rounded-full bg-gradient-to-r from-teal-100 to-blue-100 mr-3">
+              <MapPin className="h-8 w-8 text-teal-600" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-700 via-blue-700 to-amber-700 bg-clip-text text-transparent">
+              Découvrez la Tunisie
+            </h1>
+          </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-base max-w-2xl mx-auto text-center text-zinc-600 dark:text-zinc-400"
+            className="text-base max-w-2xl mx-auto text-center text-gray-600"
           >
             Explorez les plus beaux endroits de la Tunisie, des plages paradisiaques aux sites historiques fascinants.
           </motion.p>
@@ -153,16 +176,16 @@ export default function DestinationsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="mb-8 flex flex-col md:flex-row gap-4 sticky top-4 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm"
+          className="mb-8 flex flex-col md:flex-row gap-4 sticky top-4 z-10 bg-white/80 backdrop-blur-md p-4 rounded-xl border border-teal-100 shadow-lg"
         >
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-teal-500" />
             <Input
               type="text"
               placeholder="Rechercher une destination..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              className="pl-10 bg-white border-teal-200 focus-visible:ring-teal-500 rounded-full"
             />
           </div>
 
@@ -170,19 +193,19 @@ export default function DestinationsPage() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="flex items-center gap-2 whitespace-nowrap border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                className="flex items-center gap-2 whitespace-nowrap border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full px-6"
               >
                 <Filter className="w-4 h-4" />
                 Trier par
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="rounded-xl border-blue-100">
               {sortOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => setSortBy(option.value)}
-                  className={sortBy === option.value ? "bg-zinc-100 dark:bg-zinc-800" : ""}
+                  className={`rounded-lg ${sortBy === option.value ? "bg-blue-50 text-blue-700 font-medium" : ""}`}
                 >
                   {option.label}
                 </DropdownMenuItem>
@@ -192,12 +215,12 @@ export default function DestinationsPage() {
         </motion.div>
 
         <Tabs defaultValue="Toutes" className="mb-12" value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="mx-auto flex justify-center bg-zinc-100/80 dark:bg-zinc-800/80 backdrop-blur-sm p-1 rounded-full">
+          <TabsList className="mx-auto flex justify-center bg-white/80 backdrop-blur-sm p-1 rounded-full shadow-md border border-teal-100">
             {categories.map((category) => (
               <TabsTrigger
                 key={category}
                 value={category}
-                className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:shadow-sm"
+                className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
               >
                 {category === "historique"
                   ? "Historique"
@@ -219,19 +242,17 @@ export default function DestinationsPage() {
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center justify-center py-16 text-center"
               >
-                <div className="w-16 h-16 mb-4 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                  <Search className="w-8 h-8 text-zinc-400" />
+                <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-r from-teal-100 to-blue-100 flex items-center justify-center">
+                  <Search className="w-10 h-10 text-teal-600" />
                 </div>
-                <h3 className="text-xl font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                  Aucune destination trouvée
-                </h3>
-                <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
+                <h3 className="text-xl font-medium text-gray-900 mb-2">Aucune destination trouvée</h3>
+                <p className="text-gray-600 max-w-md mb-6">
                   Essayez de modifier vos critères de recherche ou de réinitialiser les filtres.
                 </p>
                 <Button
                   variant="outline"
                   onClick={resetFilters}
-                  className="mt-4 border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                  className="border-teal-300 text-teal-600 hover:bg-teal-50 rounded-full px-6"
                 >
                   Réinitialiser les filtres
                 </Button>
@@ -266,8 +287,7 @@ export default function DestinationsPage() {
                   <div className="flex justify-center mt-12">
                     <Button
                       onClick={loadMore}
-                      variant="outline"
-                      className="border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                      className="bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white rounded-full px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                       Afficher plus de destinations
                     </Button>
@@ -302,7 +322,7 @@ interface DestinationCardProps {
 function DestinationCard({ destination, index, hoveredId, setHoveredId }: DestinationCardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-xl shadow-md h-[350px] transition-all duration-300 hover:shadow-lg"
+      className="group relative overflow-hidden rounded-xl shadow-lg h-[350px] transition-all duration-300 hover:shadow-xl border border-white/20"
       onMouseEnter={() => setHoveredId(destination.id)}
       onMouseLeave={() => setHoveredId(null)}
     >
@@ -316,7 +336,7 @@ function DestinationCard({ destination, index, hoveredId, setHoveredId }: Destin
       />
 
       <div className="absolute inset-0 z-20 p-6 flex flex-col justify-between">
-        <div className="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full w-fit text-white text-xs">
+        <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full w-fit text-white text-xs border border-white/30">
           {destination.category === "historique"
             ? "Historique"
             : destination.category === "culturel"
@@ -347,7 +367,11 @@ function DestinationCard({ destination, index, hoveredId, setHoveredId }: Destin
               <span>Meilleure période: {destination.bestTime}</span>
             </div>
 
-            <Button asChild size="sm" className="w-full bg-blue-500 hover:bg-blue-600 text-white mt-2">
+            <Button
+              asChild
+              size="sm"
+              className="w-full bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white mt-2 rounded-full border-none"
+            >
               <Link href={`/activities/${destination.id}`}>
                 Voir les activités
                 <ArrowRight className="ml-2 h-3 w-3" />

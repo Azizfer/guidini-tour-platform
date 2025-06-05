@@ -1,15 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Upload, X, Check, Camera, AtSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import HandWrittenTitle from "@/components/ui/hand-written-title"
-import authService from '@/services/authService'
 
 interface BasicInfoStepProps {
   name: string
@@ -31,7 +28,6 @@ const passwordRequirements = [
   { label: "Chiffre", test: (v: string) => /\d/.test(v) },
   { label: "Minuscule", test: (v: string) => /[a-z]/.test(v) },
   { label: "Majuscule", test: (v: string) => /[A-Z]/.test(v) },
-  // Special character requirement removed
 ]
 
 export default function BasicInfoStep({
@@ -53,24 +49,21 @@ export default function BasicInfoStep({
   const [nameError, setNameError] = useState("")
   const [emailError, setEmailError] = useState("")
   const [passwordError, setPasswordError] = useState("")
-  const [acceptTerms, setAcceptTerms] = useState(false)
-  const [termsError, setTermsError] = useState("")
 
   // Calculate password strength
   const getStrength = (value: string): number => {
     if (!value) return 0
-    return passwordRequirements.filter((req) => req.test(value)).length * 20
+    return passwordRequirements.filter((req) => req.test(value)).length * 25
   }
 
   const strength = getStrength(password)
-  const strengthLabel = strength <= 40 ? "Faible" : strength <= 80 ? "Moyen" : "Fort"
+  const strengthLabel = strength <= 50 ? "Faible" : strength <= 75 ? "Moyen" : "Fort"
 
   // Get color based on strength
   const getStrengthColor = () => {
-    if (strength <= 20) return "bg-red-500"
-    if (strength <= 40) return "bg-orange-500"
-    if (strength <= 60) return "bg-yellow-500"
-    if (strength <= 80) return "bg-blue-500"
+    if (strength <= 25) return "bg-red-500"
+    if (strength <= 50) return "bg-orange-500"
+    if (strength <= 75) return "bg-yellow-500"
     return "bg-green-500"
   }
 
@@ -97,7 +90,7 @@ export default function BasicInfoStep({
   }, [email])
 
   useEffect(() => {
-    if (password && strength < 60) {
+    if (password && strength < 75) {
       setPasswordError("Le mot de passe n'est pas assez fort")
     } else {
       setPasswordError("")
@@ -123,23 +116,16 @@ export default function BasicInfoStep({
   }
 
   const handleNext = async () => {
-    let hasError = false
+    // Reset all errors
     setError("")
-    setEmailError("")
     setNameError("")
+    setEmailError("")
     setPasswordError("")
 
-    // Validate email
-    if (!email) {
-      setEmailError("Veuillez entrer votre adresse email")
-      hasError = true
-    } else if (!isValidEmail(email)) {
-      setEmailError("Veuillez entrer une adresse email valide")
-      hasError = true
-    }
+    // Validate all fields
+    let hasError = false
 
-    // Validate name
-    if (!name) {
+    if (!name.trim()) {
       setNameError("Veuillez entrer votre nom")
       hasError = true
     } else if (name.length < 3) {
@@ -147,11 +133,18 @@ export default function BasicInfoStep({
       hasError = true
     }
 
-    // Validate password
+    if (!email.trim()) {
+      setEmailError("Veuillez entrer votre email")
+      hasError = true
+    } else if (!isValidEmail(email)) {
+      setEmailError("Veuillez entrer une adresse email valide")
+      hasError = true
+    }
+
     if (!password) {
       setPasswordError("Veuillez entrer un mot de passe")
       hasError = true
-    } else if (strength < 60) {
+    } else if (strength < 75) {
       setPasswordError("Veuillez utiliser un mot de passe plus fort")
       hasError = true
     }
@@ -160,241 +153,209 @@ export default function BasicInfoStep({
       setError("Veuillez corriger les erreurs ci-dessous")
       return
     }
-    
-    // Check if email already exists using authService
-    try {
-      console.log("Vérification de l'email via authService:", email);
-      
-      // Utiliser authService pour vérifier l'email
-      await authService.checkEmail(email);
-      
-      console.log("Email disponible, passage à l'étape suivante");
-      // If we get here, the email is available
-      onNext();
-      
-    } catch (error: any) {
-      console.error("Erreur lors de la vérification de l'email:", error);
-      
-      // Gérer les différents types d'erreurs
-      if (error.response && error.response.status === 400) {
-        const data = error.response.data;
-        
-        if (data.error && data.error.includes('email')) {
-          setEmailError("Cette adresse email est déjà utilisée")
-          setError("Veuillez utiliser une autre adresse email")
-          return;
-        }
-        
-        if (data.error && data.error.includes('nom')) {
-          setNameError("Ce nom d'utilisateur est déjà utilisé")
-          setError("Veuillez utiliser un autre nom d'utilisateur")
-          return;
-        }
-        
-        // Erreur générique
-        setError(data.error || "Une erreur est survenue lors de la vérification")
-        return;
-      }
-      
-      // Erreur de connexion ou autre erreur
-      setError(error.message || "Erreur de connexion au serveur. Veuillez réessayer plus tard.");
-      return;
-    }
+
+    onNext()
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="absolute top-4 left-4">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+      {/* Atmospheric effects */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
+
+      {/* Back button */}
+      <div className="absolute top-4 left-4 z-20">
         <button
-          onClick={() => window.location.href = '/'}
-          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Retour à l'accueil"
+          onClick={onBackToSignIn}
+          className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors text-white"
+          aria-label="Retour à la connexion"
         >
-          <X className="h-5 w-5 text-gray-600" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
-      <HandWrittenTitle
-        title="Créez votre compte"
-        subtitle="Commençons par vos informations de base"
-        size="sm"
-        className="mb-6"
-      />
+      <div className="min-h-screen flex items-start justify-center px-4 pt-16 pb-8 relative z-10">
+        <div className="w-full max-w-sm mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-full"
+          >
+            {/* Header Section */}
+            <div className="text-center mb-6">
+              <p className="text-white text-2xl font-semibold mb-2 drop-shadow-lg">CRÉEZ VOTRE COMPTE</p>
+              <p className="text-blue-100 text-base drop-shadow-md">Commençons par vos informations de base</p>
+            </div>
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg w-full text-sm"
-        >
-          {error}
-        </motion.div>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="space-y-6 w-full"
-      >
-        {/* Profile Image Upload */}
-        <div className="flex flex-col items-center mb-6">
-          <Label htmlFor="profile-image" className="text-sm font-medium text-gray-700 mb-2">
-            Photo de profil (optionnel)
-          </Label>
-          <div className="relative mb-3 group">
-            <div
-              className={`w-28 h-28 rounded-full overflow-hidden flex items-center justify-center border-2 transition-all duration-300 ${
-                profileImagePreview ? "border-teal-300" : "border-gray-200 bg-gray-50 group-hover:border-teal-200"
-              }`}
-            >
-              {profileImagePreview ? (
-                <img
-                  src={profileImagePreview || "/placeholder.svg"}
-                  alt="Aperçu du profil"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-teal-500 transition-colors">
-                  <Camera className="h-8 w-8 mb-1" />
-                  <span className="text-xs">Ajouter</span>
-                </div>
+            {/* Form Content */}
+            <div className="space-y-5 backdrop-blur-sm">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-red-400/20 border border-red-400/30 text-white rounded-lg text-sm"
+                >
+                  {error}
+                </motion.div>
               )}
-            </div>
-            <label
-              htmlFor="profile-image"
-              className="absolute bottom-0 right-0 bg-gradient-to-r from-teal-500 to-teal-400 text-white p-2 rounded-full cursor-pointer hover:shadow-md transition-all duration-300 hover:from-teal-600 hover:to-teal-500"
-            >
-              <Upload className="h-4 w-4" />
-            </label>
-            <input
-              id="profile-image"
-              type="file"
-              accept="image/jpeg,image/png,image/gif"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-          </div>
-          <p className="text-xs text-gray-500">JPG, PNG ou GIF. Max 2MB.</p>
-        </div>
 
-        <div className="space-y-4">
-          {/* Name Input */}
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-              Prénom et nom
-            </Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder=""
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={`w-full rounded-lg transition-all ${
-                nameError
-                  ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
-                  : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
-              } focus:ring-opacity-50`}
-              autoComplete="off"
-            />
-            {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
-          </div>
-
-          {/* Email Input */}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Email
-            </Label>
-            <div className="relative">
-              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-              <Input
-                id="email"
-                type="email"
-                placeholder=""
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full pl-10 rounded-lg transition-all ${
-                  emailError
-                    ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
-                    : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
-                } focus:ring-opacity-50`}
-                autoComplete="off"
-              />
-            </div>
-            {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
-          </div>
-
-          {/* Password Input */}
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-              Mot de passe
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder=""
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full pr-10 rounded-lg transition-all ${
-                  passwordError
-                    ? "border-red-300 focus:border-red-400 focus:ring focus:ring-red-200"
-                    : "border-gray-200 focus:border-teal-300 focus:ring focus:ring-teal-200"
-                } focus:ring-opacity-50`}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Cacher le mot de passe" : "Montrer le mot de passe"}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {passwordError && <p className="text-xs text-red-500 mt-1">{passwordError}</p>}
-
-            {/* Password Strength Indicator */}
-            {password && (
-              <div className="mt-3 space-y-2">
-                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              {/* Profile Image Upload */}
+              <div className="flex flex-col items-center mb-4">
+                <Label htmlFor="profile-image" className="text-sm font-medium text-white drop-shadow-md mb-2">
+                  Photo de profil (optionnel)
+                </Label>
+                <div className="relative mb-2 group">
                   <div
-                    className={`h-full ${getStrengthColor()} transition-all duration-500 ease-out`}
-                    style={{ width: `${strength}%` }}
+                    className={`w-20 h-20 rounded-full overflow-hidden flex items-center justify-center border-2 transition-all duration-300 ${
+                      profileImagePreview
+                        ? "border-white/50"
+                        : "border-white/30 bg-white/10 group-hover:border-white/40"
+                    }`}
+                  >
+                    {profileImagePreview ? (
+                      <img
+                        src={profileImagePreview || "/placeholder.svg"}
+                        alt="Aperçu du profil"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-white/80 group-hover:text-white transition-colors">
+                        <Camera className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Ajouter</span>
+                      </div>
+                    )}
+                  </div>
+                  <label
+                    htmlFor="profile-image"
+                    className="absolute bottom-0 right-0 bg-white text-blue-700 p-1.5 rounded-full cursor-pointer hover:bg-white/90 transition-all duration-300 shadow-lg"
+                  >
+                    <Upload className="h-3 w-3" />
+                  </label>
+                  <input
+                    id="profile-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif"
+                    className="hidden"
+                    onChange={handleImageChange}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
-                  Force: <span className="font-medium">{strengthLabel}</span>
-                </p>
+                <p className="text-xs text-white/70">JPG, PNG ou GIF. Max 2MB.</p>
+              </div>
 
-                {/* Password Requirements - Horizontal Layout */}
-                <div className="flex flex-wrap gap-3 text-xs text-gray-500 pt-1">
-                  {passwordRequirements.map(({ label, test }) => (
-                    <div key={label} className="flex items-center gap-1">
-                      {test(password) ? (
-                        <Check className="w-3.5 h-3.5 text-green-500" />
-                      ) : (
-                        <X className="w-3.5 h-3.5 text-gray-400" />
-                      )}
-                      <span>{label}</span>
+              <div className="space-y-4">
+                {/* Name Input */}
+                <div className="space-y-1">
+                  <Label htmlFor="name" className="text-sm font-medium text-white drop-shadow-md">
+                    Prénom et nom
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Votre nom complet"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={`w-full h-11 rounded-xl border-2 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-white/30 transition-all text-gray-800 placeholder:text-gray-500 shadow-lg ${
+                      nameError ? "border-red-300 focus:border-red-400" : "border-white/20 focus:border-white"
+                    }`}
+                    autoComplete="off"
+                  />
+                  {nameError && <p className="text-xs text-red-200 mt-1">{nameError}</p>}
+                </div>
+
+                {/* Email Input */}
+                <div className="space-y-1">
+                  <Label htmlFor="email" className="text-sm font-medium text-white drop-shadow-md">
+                    Email
+                  </Label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="votre.email@exemple.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`w-full pl-10 h-11 rounded-xl border-2 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-white/30 transition-all text-gray-800 placeholder:text-gray-500 shadow-lg ${
+                        emailError ? "border-red-300 focus:border-red-400" : "border-white/20 focus:border-white"
+                      }`}
+                      autoComplete="off"
+                    />
+                  </div>
+                  {emailError && <p className="text-xs text-red-200 mt-1">{emailError}</p>}
+                </div>
+
+                {/* Password Input */}
+                <div className="space-y-1">
+                  <Label htmlFor="password" className="text-sm font-medium text-white drop-shadow-md">
+                    Mot de passe
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={`w-full pr-10 h-11 rounded-xl border-2 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-white/30 transition-all text-gray-800 placeholder:text-gray-500 shadow-lg ${
+                        passwordError ? "border-red-300 focus:border-red-400" : "border-white/20 focus:border-white"
+                      }`}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Cacher le mot de passe" : "Montrer le mot de passe"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {passwordError && <p className="text-xs text-red-200 mt-1">{passwordError}</p>}
+
+                  {/* Password Strength Indicator */}
+                  {password && (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${getStrengthColor()} transition-all duration-500 ease-out`}
+                          style={{ width: `${strength}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-white/80">
+                        Force: <span className="font-medium">{strengthLabel}</span>
+                      </p>
+
+                      {/* Password Requirements */}
+                      <div className="flex flex-wrap gap-2 text-xs text-white/70 pt-1">
+                        {passwordRequirements.map(({ label, test }) => (
+                          <div key={label} className="flex items-center gap-1">
+                            {test(password) ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <X className="w-3 h-3 text-white/40" />
+                            )}
+                            <span>{label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Continue Button */}
-        <div className="pt-4">
-          <Button
-            onClick={handleNext}
-            className="w-full py-6 bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium"
-          >
-            Continuer
-          </Button>
+              {/* Continue Button */}
+              <div className="pt-3">
+                <Button
+                  onClick={handleNext}
+                  className="w-full h-12 bg-gradient-to-r from-white to-gray-100 hover:from-gray-100 hover:to-white text-blue-600 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-base"
+                >
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

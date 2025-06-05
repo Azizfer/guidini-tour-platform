@@ -1,28 +1,30 @@
+const Payment = require('../models/payment');
+const User = require('../models/User');
+const Tour = require('../models/Tour');
+const Notification = require('../models/Notification');
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 const mongoose = require('mongoose');
-
-// Import Payment model
-const Payment = require('../models/Payment');
 
 // Konnect API configuration
 // Load environment variables if not already loaded
 require('dotenv').config();
 
 // Utiliser l'URL de base de l'API Konnect (environnement sandbox)
-const KONNECT_API_URL = process.env.KONNECT_API_URL || 'https://api.sandbox.konnect.network';
+const KONNECT_API_URL = process.env.KONNECT_API_URL || 'https://api.konnect.network';
 
 // La clé API Konnect au format 'ID:SECRET' doit être utilisée telle quelle dans l'en-tête 'x-api-key'
 // Si la clé n'est pas définie dans les variables d'environnement, utiliser une clé de test
 const KONNECT_API_KEY = process.env.KONNECT_API_KEY || 'test_ID:test_SECRET';
 
 // ID du portefeuille du destinataire (à définir dans les variables d'environnement)
-const RECEIVER_WALLET_ID = process.env.KONNECT_RECEIVER_WALLET_ID || 'test_wallet_id';
+const RECEIVER_WALLET_ID = process.env.RECEIVER_WALLET_ID || 'test_wallet_id';
 
 // URL de base du backend pour les webhooks et redirections
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://api.guidini.tn';
 
 // URL de redirection après paiement (frontend)
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://guidini.tn';
 
 // Initialize payment with Konnect
 exports.initializePayment = async (req, res) => {
@@ -283,134 +285,166 @@ exports.initializePayment = async (req, res) => {
           // Préparer les notifications
           const notifications = [];
           
-          // Notification pour le touriste
-          console.log('Vérification de l\'ID utilisateur:', savedPayment.userId);
-          if (savedPayment.userId && savedPayment.userId !== 'anonymous') {
-            console.log('Ajout d\'une notification pour le touriste avec ID:', savedPayment.userId);
-            // Convertir les IDs en ObjectId si nécessaire
-            const recipientId = mongoose.Types.ObjectId.isValid(savedPayment.userId) 
-              ? mongoose.Types.ObjectId(savedPayment.userId) 
-              : savedPayment.userId;
+          // Create notifications for both user and guide
+          try {
+            console.log('Creating notifications for payment:', savedPayment.paymentRef);
+            const notifications = [];
             
-            const tourObjectId = savedPayment.tourId && mongoose.Types.ObjectId.isValid(savedPayment.tourId)
-              ? mongoose.Types.ObjectId(savedPayment.tourId)
-              : undefined;
+            // Create notification for the tourist (user)
+            if (userId) {
+              const recipientId = mongoose.Types.ObjectId.isValid(userId) 
+                ? mongoose.Types.ObjectId(userId) 
+                : userId;
               
-            notifications.push({
-              recipient: recipientId,
-              title: "Paiement réussi",
-              description: `Votre paiement de ${savedPayment.amount} TND pour la réservation a été confirmé.`,
-              type: "payment",
-              tourId: tourObjectId,
-              read: false,
-              createdAt: new Date()
-            });
-            console.log('Notification pour touriste ajoutée à la liste');
-          } else {
-            console.log('Pas d\'ID utilisateur valide pour créer une notification touriste');
-          }
-          
-          // Notification pour le guide (si l'ID du tour est disponible, on peut récupérer l'ID du guide)
-          console.log('Vérification de l\'ID du tour:', savedPayment.tourId);
-          if (savedPayment.tourId && savedPayment.tourId !== 'unknown') {
-            console.log('ID du tour valide, recherche des informations du tour...');
-            try {
-              // Importer le modèle de tour
-              const Tour = require('../models/Tour');
+              const tourObjectId = savedPayment.tourId && mongoose.Types.ObjectId.isValid(savedPayment.tourId)
+                ? mongoose.Types.ObjectId(savedPayment.tourId)
+                : undefined;
               
-              // Récupérer les informations du tour pour obtenir l'ID du guide
-              console.log('Recherche du tour avec ID:', savedPayment.tourId);
-              const tour = await Tour.findById(savedPayment.tourId);
+              console.log('Creating notification for tourist:', recipientId);
               
-              if (tour) {
-                console.log('Tour trouvé:', tour._id, 'Guide ID:', tour.guideId);
-                if (tour.guideId) {
-                  console.log('Ajout d\'une notification pour le guide avec ID:', tour.guideId);
-                  // Convertir les IDs en ObjectId si nécessaire
-                  const guideId = mongoose.Types.ObjectId.isValid(tour.guideId)
-                    ? mongoose.Types.ObjectId(tour.guideId)
-                    : tour.guideId;
+              // Check if a tourist notification already exists
+              const existingTouristNotification = await Notification.findOne({
+                recipient: recipientId,
+                type: 'payment',
+                tourId: tourObjectId,
+                'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+              });
+              
+              if (!existingTouristNotification) {
+                notifications.push({
+                  recipient: recipientId,
+                  title: "Paiement confirmé",
+                  description: `Votre paiement de ${savedPayment.amount} TND pour la réservation a été confirmé.`,
+                  type: "payment",
+                  tourId: tourObjectId,
+                  read: false,
+                  createdAt: new Date()
+                });
+                console.log('Notification pour touriste ajoutée à la liste');
+              } else {
+                console.log('Tourist notification already exists, skipping creation');
+              }
+            } else {
+              console.log('Pas d\'ID utilisateur valide pour créer une notification touriste');
+            }
+            
+            // Notification pour le guide (si l'ID du tour est disponible, on peut récupérer l'ID du guide)
+            console.log('Vérification de l\'ID du tour:', savedPayment.tourId);
+            if (savedPayment.tourId && savedPayment.tourId !== 'unknown') {
+              console.log('ID du tour valide, recherche des informations du tour...');
+              try {
+                // Importer le modèle de tour
+                const Tour = require('../models/Tour');
+                
+                // Récupérer les informations du tour pour obtenir l'ID du guide
+                console.log('Recherche du tour avec ID:', savedPayment.tourId);
+                const tour = await Tour.findById(savedPayment.tourId);
+                
+                if (tour) {
+                  console.log('Tour trouvé:', tour._id, 'Guide ID:', tour.guideId);
+                  if (tour.guideId) {
+                    console.log('Ajout d\'une notification pour le guide avec ID:', tour.guideId);
+                    // Convertir les IDs en ObjectId si nécessaire
+                    const guideId = mongoose.Types.ObjectId.isValid(tour.guideId)
+                      ? mongoose.Types.ObjectId(tour.guideId)
+                      : tour.guideId;
+                      
+                    const tourObjectId = mongoose.Types.ObjectId.isValid(savedPayment.tourId)
+                      ? mongoose.Types.ObjectId(savedPayment.tourId)
+                      : undefined;
                     
-                  const tourObjectId = mongoose.Types.ObjectId.isValid(savedPayment.tourId)
-                    ? mongoose.Types.ObjectId(savedPayment.tourId)
-                    : undefined;
+                    // Check if a guide notification already exists
+                    const existingGuideNotification = await Notification.findOne({
+                      recipient: guideId,
+                      tourId: tourId,
+                      'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+                    });
                     
-                  notifications.push({
-                    recipient: guideId,
-                    title: "Nouveau paiement reçu",
-                    description: `Vous avez reçu un paiement de ${savedPayment.amount} TND pour une réservation.`,
-                    type: "payment",
-                    tourId: tourObjectId,
-                    amount: savedPayment.amount,
-                    read: false,
-                    createdAt: new Date()
-                  });
-                  console.log('Notification pour guide ajoutée à la liste');
-                  
-                  // Update the guide's reservation count in GuideStats
-                  try {
-                    console.log('Updating guide reservation count for guide:', guideId);
-                    const GuideStats = require('../models/GuideStats');
-                    
-                    // Find or create stats document for this guide
-                    let stats = await GuideStats.findOne({ guideId: guideId });
-                    
-                    if (!stats) {
-                      console.log('No stats found for guide, creating new stats document');
-                      stats = new GuideStats({ guideId: guideId });
+                    if (!existingGuideNotification) {
+                      const notification = await Notification.create({
+                        recipient: guideId, // Use recipient instead of userId for consistency
+                        type: 'reservation',
+                        title: 'Nouvelle réservation',
+                        description: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
+                        tourId: tourId, // Add tourId for better tracking
+                        read: false
+                      });
+                      
+                      console.log('Notification created for guide:', guideId);
+                    } else {
+                      console.log('Guide notification already exists, skipping creation');
                     }
                     
-                    // Increment reservations count
-                    stats.reservations += 1;
-                    
-                    // Also increment revenue if amount is available
-                    if (savedPayment.amount) {
-                      stats.totalRevenue += savedPayment.amount;
+                    // Update the guide's reservation count in GuideStats
+                    try {
+                      console.log('Updating guide reservation count for guide:', guideId);
+                      const GuideStats = require('../models/GuideStats');
+                      
+                      // Find or create stats document for this guide
+                      let stats = await GuideStats.findOne({ guideId: guideId });
+                      
+                      if (!stats) {
+                        console.log('No stats found for guide, creating new stats document');
+                        stats = new GuideStats({ guideId: guideId });
+                      }
+                      
+                      // Increment reservations count
+                      stats.reservations += 1;
+                      
+                      // Also increment revenue if amount is available
+                      if (savedPayment.amount) {
+                        stats.totalRevenue += savedPayment.amount;
+                      }
+                      
+                      // Save the updated stats
+                      await stats.save();
+                      
+                      console.log(`Incremented reservations count for guide ${guideId} to ${stats.reservations}`);
+                      
+                      // Emit socket event if available
+                      if (req.app.get('io')) {
+                        const io = req.app.get('io');
+                        io.emit('reservationUpdate', { guideId: guideId.toString() });
+                        console.log('Emitted reservationUpdate event for guide:', guideId);
+                      }
+                    } catch (statsError) {
+                      console.error('Error updating guide stats:', statsError);
                     }
-                    
-                    // Save the updated stats
-                    await stats.save();
-                    
-                    console.log(`Incremented reservations count for guide ${guideId} to ${stats.reservations}`);
-                    
-                    // Emit socket event if available
-                    if (req.app.get('io')) {
-                      const io = req.app.get('io');
-                      io.emit('reservationUpdate', { guideId: guideId.toString() });
-                      console.log('Emitted reservationUpdate event for guide:', guideId);
-                    }
-                  } catch (statsError) {
-                    console.error('Error updating guide stats:', statsError);
+                  } else {
+                    console.log('Le tour n\'a pas d\'ID de guide associé');
                   }
                 } else {
-                  console.log('Le tour n\'a pas d\'ID de guide associé');
+                  console.log('Aucun tour trouvé avec cet ID');
                 }
-              } else {
-                console.log('Aucun tour trouvé avec cet ID');
+              } catch (tourError) {
+                console.error('Erreur lors de la recherche du tour:', tourError);
               }
-            } catch (tourError) {
-              console.error('Erreur lors de la recherche du tour:', tourError);
+            } else {
+              console.log('Pas d\'ID de tour valide pour créer une notification guide');
             }
-          } else {
-            console.log('Pas d\'ID de tour valide pour créer une notification guide');
-          }
-          
-          // Créer les notifications dans la base de données
-          console.log('Nombre de notifications à créer:', notifications.length);
-          if (notifications.length > 0) {
-            console.log('Tentative d\'insertion des notifications dans la base de données...');
-            try {
-              const result = await Notification.insertMany(notifications);
-              console.log('Résultat de l\'insertion:', result);
-              console.log(`${notifications.length} notifications créées automatiquement pour le paiement ${savedPayment.paymentRef}`);
-            } catch (insertError) {
-              console.error('Erreur spécifique lors de l\'insertion des notifications:', insertError);
-              if (insertError.name === 'ValidationError') {
-                console.error('Erreurs de validation:', insertError.errors);
+            
+            // Créer les notifications dans la base de données
+            console.log('Nombre de notifications à créer:', notifications.length);
+            if (notifications.length > 0) {
+              console.log('Tentative d\'insertion des notifications dans la base de données...');
+              try {
+                const result = await Notification.insertMany(notifications);
+                console.log('Résultat de l\'insertion:', result);
+                console.log(`${notifications.length} notifications créées automatiquement pour le paiement ${savedPayment.paymentRef}`);
+              } catch (insertError) {
+                console.error('Erreur spécifique lors de l\'insertion des notifications:', insertError);
+                if (insertError.name === 'ValidationError') {
+                  console.error('Erreurs de validation:', insertError.errors);
+                }
               }
+            } else {
+              console.log('Aucune notification à créer');
             }
-          } else {
-            console.log('Aucune notification à créer');
+          } catch (notifError) {
+            console.error('Erreur générale lors de la création automatique des notifications:', notifError);
+            console.error('Détails de l\'erreur:', notifError.message);
+            console.error('Stack trace:', notifError.stack);
+            // Ne pas bloquer le processus si la création de notifications échoue
           }
         } catch (notifError) {
           console.error('Erreur générale lors de la création automatique des notifications:', notifError);
@@ -587,27 +621,75 @@ exports.handleWebhook = async (req, res) => {
                   
                   // Create notification for tourist
                   if (payment.userId) {
-                    notifications.push({
+                    // Check if a tourist notification already exists
+                    const existingTouristNotification = await Notification.findOne({
                       recipient: payment.userId,
-                      title: 'Paiement confirmé',
-                      description: `Votre paiement de ${payment.amount} TND pour la réservation a été confirmé.`,
                       type: 'payment',
                       tourId: payment.tourId,
-                      amount: payment.amount
+                      'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) }
                     });
+                    
+                    if (!existingTouristNotification) {
+                      notifications.push({
+                        recipient: payment.userId,
+                        title: 'Paiement confirmé',
+                        description: `Votre paiement de ${payment.amount} TND pour la réservation a été confirmé.`,
+                        type: 'payment',
+                        tourId: payment.tourId,
+                        amount: payment.amount,
+                        read: false
+                      });
+                      console.log('Tourist payment notification added to list');
+                    } else {
+                      console.log('Tourist notification already exists, skipping creation');
+                    }
+                  } else if (paymentRecord && paymentRecord.userId) {
+                    // Check if a tourist notification already exists
+                    const existingTouristNotification = await Notification.findOne({
+                      recipient: paymentRecord.userId,
+                      type: 'payment',
+                      tourId: tourId,
+                      'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+                    });
+                    
+                    if (!existingTouristNotification) {
+                      notifications.push({
+                        recipient: paymentRecord.userId,
+                        title: 'Paiement confirmé',
+                        description: `Votre paiement de ${paymentRecord.amount} TND pour la réservation a été confirmé.`,
+                        type: 'payment',
+                        tourId: tourId,
+                        amount: paymentRecord.amount,
+                        read: false
+                      });
+                      console.log('Tourist payment notification added to list from payment record');
+                    } else {
+                      console.log('Tourist notification already exists, skipping creation');
+                    }
                   }
                   
                   // Create notification for guide
                   if (tour.guideId) {
-                    notifications.push({
+                    // Check if a notification already exists for this payment/reservation
+                    const existingNotification = await Notification.findOne({
                       recipient: tour.guideId,
-                      title: 'Nouvelle réservation',
-                      description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${payment.amount} TND.`,
-                      type: 'booking',
-                      tourId: payment.tourId,
-                      userId: payment.userId,
-                      amount: payment.amount
+                      tourId: tour.tourId,
+                      'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) } // Check for notifications in the last 5 minutes
                     });
+                    
+                    if (!existingNotification) {
+                      notifications.push({
+                        recipient: tour.guideId,
+                        title: 'Nouvelle réservation',
+                        description: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
+                        type: 'reservation',
+                        tourId: tour.tourId,
+                        userId: payment.userId,
+                        amount: payment.amount
+                      });
+                    } else {
+                      console.log('Notification already exists for this reservation, skipping creation');
+                    }
                   }
                   
                   console.log('Nombre de notifications à créer:', notifications.length);
@@ -787,7 +869,7 @@ exports.handleWebhook = async (req, res) => {
               await stats.save();
               
               // Force a recalculation of all stats to ensure consistency
-              const { Tour, Reservation } = require('../models');
+              const { Reservation } = require('../models');
               const reservations = await Reservation.countDocuments({ guideId: guideId });
               
               // Update the stats with the correct count from the Reservation collection
@@ -860,16 +942,28 @@ exports.handleWebhook = async (req, res) => {
             // Create a notification for the guide
             try {
               const Notification = require('../models/Notification');
-              const notification = await Notification.create({
-                userId: guideId,
-                type: 'reservation',
-                title: 'Nouvelle réservation',
-                message: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
-                read: false
+              
+              // Check if a notification already exists for this payment/reservation
+              const existingNotification = await Notification.findOne({
+                recipient: guideId,
+                tourId: tourId,
+                'createdAt': { $gte: new Date(Date.now() - 5 * 60 * 1000) } // Check for notifications in the last 5 minutes
               });
               
-              // Socket.io events removed
-              console.log('Notification created for guide:', guideId);
+              if (!existingNotification) {
+                const notification = await Notification.create({
+                  recipient: guideId, // Use recipient instead of userId for consistency
+                  type: 'reservation',
+                  title: 'Nouvelle réservation',
+                  description: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
+                  tourId: tourId, // Add tourId for better tracking
+                  read: false
+                });
+                
+                console.log('Notification created for guide:', guideId);
+              } else {
+                console.log('Notification already exists for this reservation, skipping creation');
+              }
             } catch (notificationError) {
               console.error('Error creating notification:', notificationError);
             }

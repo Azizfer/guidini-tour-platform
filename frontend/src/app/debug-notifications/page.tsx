@@ -106,11 +106,14 @@ export default function DebugNotifications() {
       
       console.log('Notifications fetched:', response.data)
       
+      // Type assertion for response data
+      const notifications = response.data as any[];
+      
       setResult(`Notifications fetched successfully!
-        Count: ${response.data.length}
+        Count: ${notifications.length}
         
         Notifications:
-        ${JSON.stringify(response.data, null, 2)}
+        ${JSON.stringify(notifications, null, 2)}
       `)
     } catch (error: any) {
       console.error('Error fetching notifications:', error)

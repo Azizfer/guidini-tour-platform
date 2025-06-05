@@ -242,11 +242,14 @@ export default function ChatInterface() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleBubbleVisibility(conv.id);
+                      e.preventDefault();
+                      // Remove this bubble immediately from visible bubbles
+                      setVisibleBubbles(prev => prev.filter(id => id !== conv.id));
+                      console.log(`Removing bubble: ${conv.id}`);
                     }}
-                    className="absolute -top-2 -right-2 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-red-50 border border-gray-200"
+                    className="absolute -top-1 -right-1 bg-white rounded-full w-[18px] h-[18px] flex items-center justify-center shadow-md z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-red-50 border border-gray-200"
                   >
-                    <X className="h-3 w-3 text-gray-600" />
+                    <X className="h-2.5 w-2.5 text-gray-600" />
                   </button>
                   
                   {/* Chat bubble button */}
@@ -254,7 +257,7 @@ export default function ChatInterface() {
                     onClick={() => openChatFromBubble(conv.id)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`rounded-full shadow-md flex items-center justify-center bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 w-11 h-11 ${conv.hasUnread ? "ring-2 ring-white" : ""}`}
+                    className={`rounded-full shadow-md flex items-center justify-center bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 w-11 h-11 ${conv.hasUnread ? "ring-2 ring-white" : ""}`}
                   >
                     {conv.avatar ? (
                       <div className="bg-white/20 rounded-full p-1">
@@ -310,12 +313,31 @@ export default function ChatInterface() {
                   <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-white"></div>
                 </motion.div>
                 
+                {/* New Close button with enhanced visibility and functionality */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // First close the chat
+                    closeChat();
+                    // Then use the context function to toggle off the bubble
+                    // If it's currently open, this will close it
+                    if (isChatBubbleOpen) {
+                      toggleChatBubble();
+                    }
+                    console.log('Closing chat bubble via context functions');
+                  }}
+                  className="absolute -top-1.5 -right-1.5 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-lg z-30 cursor-pointer hover:bg-red-100 border border-gray-300 transition-all duration-200"
+                >
+                  <X className="h-3 w-3 text-gray-700" />
+                </div>
+                
                 {/* Chat bubble button */}
                 <motion.button
                   onClick={maximizeChat}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="rounded-full shadow-md flex items-center justify-center bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 w-11 h-11"
+                  className="rounded-full shadow-md flex items-center justify-center bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 w-11 h-11"
                 >
                   {activeChat.avatar ? (
                     <div className="bg-white/20 rounded-full p-1">

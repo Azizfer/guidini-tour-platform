@@ -20,23 +20,24 @@
     "/Activities/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
+      "static/css/app/Activities/page.css",
       "static/chunks/app/Activities/page.js"
-    ],
-    "/payment/callback/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/payment/callback/page.js"
     ],
     "/profileGuide/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/profileGuide/page.js"
     ],
-    "/carte-interactive/page": [
+    "/guides/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/carte-interactive/page.css",
-      "static/chunks/app/carte-interactive/page.js"
+      "static/css/app/guides/page.css",
+      "static/chunks/app/guides/page.js"
+    ],
+    "/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/loading.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",

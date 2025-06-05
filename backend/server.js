@@ -17,6 +17,7 @@ const ratingRoutes = require('./routes/ratings');
 const guideRoutes = require('./routes/guides');
 const guideStatsRoutes = require('./routes/guideStatsRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
+const testRoutes = require('./routes/test'); // Added test routes
 const app = express();
 
 // Middleware for CORS - Enhanced for better frontend-backend communication
@@ -99,7 +100,10 @@ app.use('/api/payment/stripe/webhook', (req, res, next) => {
   });
 });
 
-// Test route
+// Public test routes (no auth required)
+app.use('/api/test', testRoutes); // Add test routes for diagnostics without auth
+
+// Basic test route
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is working!' });
 });
@@ -110,7 +114,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/tours', tourRoutes);
 app.use('/api/tour-reviews', tourReviewRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/test', testKonnectRoutes);
+app.use('/api/test-konnect', testKonnectRoutes);
 app.use('/api/preferences', preferenceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
@@ -121,9 +125,9 @@ app.use('/api', guideStatsRoutes);
 app.use('/api', reservationRoutes); // Add reservation routes
 
 // Connect to MongoDB
-const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/guidini';
+const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Guidini';
 
-// Connect to MongoDB without verbose logging
+// Connect to MongoDB without logging
 mongoose.connect(dbUri)
   .then(() => {
     // Only start the server after successfully connecting to MongoDB
@@ -131,10 +135,11 @@ mongoose.connect(dbUri)
     
     // Start the server without Socket.io
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      // Server started silently
     });
   })
   .catch((err) => {
-    console.error('MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err);
+    console.error('Please make sure MongoDB is running and accessible');
     process.exit(1); // Exit the process if MongoDB connection fails
   });

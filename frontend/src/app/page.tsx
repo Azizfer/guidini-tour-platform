@@ -2,7 +2,7 @@
 import Header from "@/components/Header"
 import { useEffect } from "react"
 import HeroSection from "@/components/Hero"
-import PopularDestinations from "@/components/popular-destinations"
+import PopularDestinations from "@/app/Destinations/components/popular-destinations"
 import PopularActivities from "@/app/Activities/components/popular-activities"
 import PopularGuides from "@/app/guides/components/popular-guides"
 import Footer from "@/components/footer"

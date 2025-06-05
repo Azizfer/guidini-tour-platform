@@ -1,6 +1,6 @@
 'use client'
 
-import Header from '@/components/Header';
+// Header removed as requested
 import Footer from '@/components/footer';
 import ChatButton from '@/components/Chatbot';
 import { ThemeProvider } from 'next-themes';
@@ -10,7 +10,7 @@ export default function ProfileGuide() {
   return (
     <ThemeProvider attribute="class">
       <div className="min-h-screen flex flex-col">
-        <Header />
+        {/* Header removed */}
         <main className="flex-1">
           <ProfileDashboard />
         </main>

@@ -82,8 +82,7 @@ const guideStatsSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Create indexes for better query performance
-guideStatsSchema.index({ guideId: 1 });
+// The guideId field already has unique: true which creates an index
 
 // Pre-save hook
 guideStatsSchema.pre('save', function(next) {

@@ -16,7 +16,8 @@ const reservationSchema = new mongoose.Schema({
   guideId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: false // Prevent automatic index creation since we define it explicitly below
   },
   
   // Tourist information

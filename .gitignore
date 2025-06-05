@@ -1,3 +1,4 @@
 # Ignore video files
 TunisiaVideo.mp4
-node_modules
+node_modules/
+.next/

@@ -10,16 +10,6 @@ exports.id = "vendor-chunks/next";
 exports.ids = ["vendor-chunks/next"];
 exports.modules = {
 
-/***/ "(ssr)/./node_modules/next/font/google/target.css?{\"path\":\"src\\\\components\\\\Hero.tsx\",\"import\":\"Pacifico\",\"arguments\":[{\"subsets\":[\"latin\"],\"weight\":[\"400\"],\"variable\":\"--font-pacifico\"}],\"variableName\":\"pacifico\"}":
-/*!***********************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/next/font/google/target.css?{"path":"src\\components\\Hero.tsx","import":"Pacifico","arguments":[{"subsets":["latin"],"weight":["400"],"variable":"--font-pacifico"}],"variableName":"pacifico"} ***!
-  \***********************************************************************************************************************************************************************************************************************/
-/***/ ((module) => {
-
-eval("// Exports\nmodule.exports = {\n\t\"style\": {\"fontFamily\":\"'Pacifico', 'Pacifico Fallback'\",\"fontWeight\":400,\"fontStyle\":\"normal\"},\n\t\"className\": \"__className_5f64cf\",\n\t\"variable\": \"__variable_5f64cf\"\n};\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvbmV4dC9mb250L2dvb2dsZS90YXJnZXQuY3NzP3tcInBhdGhcIjpcInNyY1xcXFxjb21wb25lbnRzXFxcXEhlcm8udHN4XCIsXCJpbXBvcnRcIjpcIlBhY2lmaWNvXCIsXCJhcmd1bWVudHNcIjpbe1wic3Vic2V0c1wiOltcImxhdGluXCJdLFwid2VpZ2h0XCI6W1wiNDAwXCJdLFwidmFyaWFibGVcIjpcIi0tZm9udC1wYWNpZmljb1wifV0sXCJ2YXJpYWJsZU5hbWVcIjpcInBhY2lmaWNvXCJ9IiwibWFwcGluZ3MiOiJBQUFBO0FBQ0E7QUFDQSxXQUFXLHFGQUFxRjtBQUNoRztBQUNBO0FBQ0EiLCJzb3VyY2VzIjpbIkM6XFxVc2Vyc1xcYXppemZcXE9uZURyaXZlXFxEZXNrdG9wXFxndWlkaW5pXFxmcm9udGVuZFxcbm9kZV9tb2R1bGVzXFxuZXh0XFxmb250XFxnb29nbGVcXHRhcmdldC5jc3M/e1wicGF0aFwiOlwic3JjXFxjb21wb25lbnRzXFxIZXJvLnRzeFwiLFwiaW1wb3J0XCI6XCJQYWNpZmljb1wiLFwiYXJndW1lbnRzXCI6W3tcInN1YnNldHNcIjpbXCJsYXRpblwiXSxcIndlaWdodFwiOltcIjQwMFwiXSxcInZhcmlhYmxlXCI6XCItLWZvbnQtcGFjaWZpY29cIn1dLFwidmFyaWFibGVOYW1lXCI6XCJwYWNpZmljb1wifXxzc3IiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gRXhwb3J0c1xubW9kdWxlLmV4cG9ydHMgPSB7XG5cdFwic3R5bGVcIjoge1wiZm9udEZhbWlseVwiOlwiJ1BhY2lmaWNvJywgJ1BhY2lmaWNvIEZhbGxiYWNrJ1wiLFwiZm9udFdlaWdodFwiOjQwMCxcImZvbnRTdHlsZVwiOlwibm9ybWFsXCJ9LFxuXHRcImNsYXNzTmFtZVwiOiBcIl9fY2xhc3NOYW1lXzVmNjRjZlwiLFxuXHRcInZhcmlhYmxlXCI6IFwiX192YXJpYWJsZV81ZjY0Y2ZcIlxufTtcbiJdLCJuYW1lcyI6W10sImlnbm9yZUxpc3QiOlswXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/next/font/google/target.css?{\"path\":\"src\\\\components\\\\Hero.tsx\",\"import\":\"Pacifico\",\"arguments\":[{\"subsets\":[\"latin\"],\"weight\":[\"400\"],\"variable\":\"--font-pacifico\"}],\"variableName\":\"pacifico\"}\n");
-
-/***/ }),
-
 /***/ "(ssr)/./node_modules/next/dist/api/app-dynamic.js":
 /*!***************************************************!*\
   !*** ./node_modules/next/dist/api/app-dynamic.js ***!

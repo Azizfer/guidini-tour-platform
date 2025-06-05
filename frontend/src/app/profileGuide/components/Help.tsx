@@ -39,22 +39,22 @@ export default function Help() {
 
   return (
     <div className="relative overflow-hidden">
-      <Card className="max-w-3xl mx-auto border border-slate-200 bg-white shadow-sm">
-        <CardHeader className="text-center">
+      <Card className="max-w-3xl mx-auto border border-gray-200 bg-white shadow-sm">
+        <CardHeader className="text-center bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-100">
           <div className="mx-auto w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center mb-4">
             <QuestionMarkCircleIcon className="h-6 w-6 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold text-slate-900">Besoin d'aide ? Contactez-nous</CardTitle>
-          <p className="text-center text-slate-600 mt-2">
+          <CardTitle className="text-2xl font-bold text-gray-900">Besoin d'aide ? Contactez-nous</CardTitle>
+          <p className="text-center text-gray-600 mt-2">
             Si vous avez besoin d'assistance ou souhaitez faire une déclaration, veuillez remplir le formulaire
             ci-dessous. Nous vous répondrons dans les plus brefs délais.
           </p>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                 Votre nom (facultatif)
               </Label>
               <Input
@@ -62,13 +62,13 @@ export default function Help() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1"
+                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 placeholder="Entrez votre nom"
               />
             </div>
 
             <div>
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                 Votre email (facultatif)
               </Label>
               <div className="relative">
@@ -77,19 +77,19 @@ export default function Help() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 pl-10"
+                  className="mt-1 pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Entrez votre email (si vous souhaitez une réponse)"
                 />
-                <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="subject" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="subject" className="text-sm font-medium text-gray-700">
                 Sujet
               </Label>
               <Select value={subject} onValueChange={setSubject}>
-                <SelectTrigger id="subject">
+                <SelectTrigger id="subject" className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                   <SelectValue placeholder="Sélectionnez un sujet" />
                 </SelectTrigger>
                 <SelectContent>
@@ -103,14 +103,14 @@ export default function Help() {
             </div>
 
             <div>
-              <Label htmlFor="message" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="message" className="text-sm font-medium text-gray-700">
                 Votre message
               </Label>
               <Textarea
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="mt-1"
+                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 rows={4}
                 placeholder="Veuillez décrire votre problème ou votre demande"
               />
@@ -135,7 +135,7 @@ export default function Help() {
             </Button>
           </form>
 
-          <p className="mt-6 text-sm text-center text-slate-500">
+          <p className="mt-6 text-sm text-center text-gray-500">
             Notre équipe examinera votre message et vous répondra dans les plus brefs délais. Merci de nous avoir
             contacté !
           </p>

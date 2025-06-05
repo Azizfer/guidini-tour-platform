@@ -2,63 +2,31 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
-import HandWrittenTitle from "@/components/ui/hand-written-title"
 
-interface TouristPreferencesStepProps {
-  preferences: string[]
-  setPreferences: (preferences: string[]) => void
-  languages: string[]
-  setLanguages: (languages: string[]) => void
+interface TouristPreferencesProps {
+  interests: string[]
+  setInterests: (interests: string[]) => void
   onNext: () => void
   onPrev: () => void
 }
 
-const travelPurposes = [
-  { id: "culture", label: "Culture et Histoire" },
-  { id: "nature", label: "Nature et Paysages" },
+const interestOptions = [
+  { id: "history", label: "Histoire et Patrimoine" },
+  { id: "culture", label: "Culture et Traditions" },
+  { id: "nature", label: "Nature et Randonnée" },
   { id: "gastronomy", label: "Gastronomie" },
-  { id: "adventure", label: "Aventure" },
-  { id: "relaxation", label: "Détente" },
-  { id: "shopping", label: "Shopping" },
+  { id: "adventure", label: "Sports et Aventure" },
+  { id: "art", label: "Art et Architecture" },
+  { id: "beaches", label: "Plages et Détente" },
+  { id: "shopping", label: "Shopping et Artisanat" },
 ]
 
-const availableLanguages = [
-  { id: "fr", label: "Français" },
-  { id: "en", label: "Anglais" },
-  { id: "ar", label: "Arabe" },
-  { id: "de", label: "Allemand" },
-  { id: "es", label: "Espagnol" },
-  { id: "it", label: "Italien" },
-]
-
-const transitionProps = {
-  type: "spring",
-  stiffness: 500,
-  damping: 30,
-  mass: 0.5,
-}
-
-export default function TouristPreferencesStep({
-  preferences,
-  setPreferences,
-  languages,
-  setLanguages,
-  onNext,
-  onPrev,
-}: TouristPreferencesStepProps) {
-  const togglePreference = (id: string) => {
-    if (preferences.includes(id)) {
-      setPreferences(preferences.filter((p) => p !== id))
+export default function TouristPreferences({ interests, setInterests, onNext, onPrev }: TouristPreferencesProps) {
+  const toggleInterest = (id: string) => {
+    if (interests.includes(id)) {
+      setInterests(interests.filter((i) => i !== id))
     } else {
-      setPreferences([...preferences, id])
-    }
-  }
-
-  const toggleLanguage = (id: string) => {
-    if (languages.includes(id)) {
-      setLanguages(languages.filter((l) => l !== id))
-    } else {
-      setLanguages([...languages, id])
+      setInterests([...interests, id])
     }
   }
 
@@ -67,157 +35,87 @@ export default function TouristPreferencesStep({
   }
 
   return (
-    <div className="flex flex-col">
-      <HandWrittenTitle
-        title="Vos préférences"
-        subtitle="Aidez-nous à personnaliser votre expérience"
-        size="sm"
-        className="mb-6"
-      />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+      {/* Atmospheric effects */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="space-y-6 w-full"
-      >
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-800">Qu'est-ce qui vous intéresse?</h2>
-          <motion.div className="flex flex-wrap gap-2" layout transition={transitionProps}>
-            {travelPurposes.map((purpose) => {
-              const isSelected = preferences.includes(purpose.id)
-              return (
-                <motion.button
-                  key={purpose.id}
-                  onClick={() => togglePreference(purpose.id)}
-                  layout
-                  initial={false}
-                  animate={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(255, 255, 255, 0.5)",
-                  }}
-                  whileHover={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(240, 240, 240, 0.8)",
-                  }}
-                  whileTap={{
-                    backgroundColor: isSelected ? "#d1f0ed" : "rgba(230, 230, 230, 0.9)",
-                  }}
-                  transition={{
-                    ...transitionProps,
-                    backgroundColor: { duration: 0.1 },
-                  }}
-                  className={`
-                    inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
-                    whitespace-nowrap overflow-hidden ring-1 ring-inset
-                    ${isSelected ? "text-teal-700 ring-teal-200" : "text-gray-600 ring-gray-200"}
-                  `}
-                >
-                  <motion.div
-                    className="relative flex items-center"
-                    animate={{
-                      width: isSelected ? "auto" : "100%",
-                      paddingRight: isSelected ? "1.5rem" : "0",
-                    }}
-                    transition={{
-                      ease: [0.175, 0.885, 0.32, 1.275],
-                      duration: 0.3,
-                    }}
-                  >
-                    <span>{purpose.label}</span>
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={transitionProps}
-                          className="absolute right-0"
-                        >
-                          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                </motion.button>
-              )
-            })}
-          </motion.div>
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-800">Langues parlées</h2>
-          <motion.div className="flex flex-wrap gap-2" layout transition={transitionProps}>
-            {availableLanguages.map((language) => {
-              const isSelected = languages.includes(language.id)
-              return (
-                <motion.button
-                  key={language.id}
-                  onClick={() => toggleLanguage(language.id)}
-                  layout
-                  initial={false}
-                  animate={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(255, 255, 255, 0.5)",
-                  }}
-                  whileHover={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(240, 240, 240, 0.8)",
-                  }}
-                  whileTap={{
-                    backgroundColor: isSelected ? "#d1f0ed" : "rgba(230, 230, 230, 0.9)",
-                  }}
-                  transition={{
-                    ...transitionProps,
-                    backgroundColor: { duration: 0.1 },
-                  }}
-                  className={`
-                    inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
-                    whitespace-nowrap overflow-hidden ring-1 ring-inset
-                    ${isSelected ? "text-teal-700 ring-teal-200" : "text-gray-600 ring-gray-200"}
-                  `}
-                >
-                  <motion.div
-                    className="relative flex items-center"
-                    animate={{
-                      width: isSelected ? "auto" : "100%",
-                      paddingRight: isSelected ? "1.5rem" : "0",
-                    }}
-                    transition={{
-                      ease: [0.175, 0.885, 0.32, 1.275],
-                      duration: 0.3,
-                    }}
-                  >
-                    <span>{language.label}</span>
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={transitionProps}
-                          className="absolute right-0"
-                        >
-                          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                </motion.button>
-              )
-            })}
-          </motion.div>
-        </div>
-
-        <div className="pt-4">
-          <Button
-            onClick={handleNext}
-            className="w-full py-6 bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium"
+      <div className="min-h-screen flex items-start justify-center px-4 pt-20 pb-8 relative z-10">
+        <div className="w-full max-w-sm mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-full"
           >
-            Continuer
-          </Button>
+            {/* Header Section */}
+            <div className="text-center mb-6">
+              <p className="text-white text-2xl font-semibold mb-2 drop-shadow-lg">VOS PRÉFÉRENCES</p>
+              <p className="text-blue-100 text-base drop-shadow-md">Quels sont vos centres d'intérêt?</p>
+            </div>
+
+            {/* Form Content */}
+            <div className="space-y-6 backdrop-blur-sm">
+              <div className="space-y-4">
+                <h2 className="text-lg font-medium text-white drop-shadow-md">Centres d'intérêt</h2>
+                <div className="flex flex-wrap gap-2">
+                  {interestOptions.map((option) => {
+                    const isSelected = interests.includes(option.id)
+                    return (
+                      <motion.button
+                        key={option.id}
+                        onClick={() => toggleInterest(option.id)}
+                        initial={false}
+                        animate={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                        }}
+                        whileHover={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.15)",
+                        }}
+                        whileTap={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.2)",
+                        }}
+                        className={`
+                          inline-flex items-center px-3 py-2 rounded-full text-sm font-medium
+                          whitespace-nowrap overflow-hidden ring-1 ring-inset backdrop-blur-sm transition-all duration-300
+                          ${isSelected ? "text-white ring-white/30" : "text-white/80 ring-white/20"}
+                        `}
+                      >
+                        <div className="relative flex items-center">
+                          <span>{option.label}</span>
+                          <AnimatePresence>
+                            {isSelected && (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="ml-2"
+                              >
+                                <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-blue-700" strokeWidth={3} />
+                                </div>
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  onClick={handleNext}
+                  className="w-full h-12 bg-gradient-to-r from-white to-gray-100 hover:from-gray-100 hover:to-white text-blue-600 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-base"
+                >
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

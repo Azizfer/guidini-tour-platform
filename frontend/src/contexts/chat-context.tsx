@@ -125,7 +125,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      const response = await fetch(`http://localhost:5001/api/users/guides/${userId}`)
+      // Use the fixed API endpoint on port 5002 for testing
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      console.log('Fetching user data from fixed API endpoint:', `${apiUrl}/api/users/guides/${userId}`);
+      const response = await fetch(`${apiUrl}/api/users/guides/${userId}`)
       
       if (response.ok) {
         const userData = await response.json()
@@ -184,7 +187,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         'Authorization': `Bearer ${token}`
       }
       
-      const response = await fetch('http://localhost:5001/api/messages/conversations', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/messages/conversations`, {
         headers
       })
       
@@ -269,7 +273,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`
       }
       
-      const response = await fetch(`http://localhost:5001/api/messages/conversation/${conversationId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/messages/conversation/${conversationId}`, {
         headers
       })
       
@@ -315,17 +320,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (!content.trim()) return
     
     try {
+      console.log('🔵 Sending message:', { content, recipientId })
       setLoadingMessages(true)
       setError(null)
       
-      
       // Check if we have a valid token and user ID
       const token = localStorage.getItem('token')
+      console.log('🔑 Token exists:', !!token)
+      
       if (!token || !currentUserId) {
+        console.error('❌ Authentication required - missing token or user ID')
         setError('Authentification requise pour envoyer des messages')
         setLoadingMessages(false)
         return
       }
+      
+      console.log('👤 Current user ID:', currentUserId)
       
       // Create a temporary message to show immediately in the UI
       const tempId = `temp-${Date.now()}`
@@ -356,14 +366,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
       
       // Try to send to backend
-      const response = await fetch('http://localhost:5001/api/messages/send', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          recipientId,
-          content
-        })
-      })
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const endpoint = `${apiUrl}/api/messages/send`;
+      console.log('🔗 Sending message to API endpoint:', endpoint);
+      console.log('💬 Message payload:', { recipientId, content });
+      console.log('🔑 Request headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer [token-hidden]' : 'none' });
+      
+      let response;
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            recipientId,
+            content
+          })
+        });
+        console.log('💯 API response status:', response.status);
+      } catch (error) {
+        const fetchError = error as Error;
+        console.error('❌ Fetch error:', fetchError);
+        setError(`Network error: ${fetchError.message}`);
+        setLoadingMessages(false);
+        return;
+      }
       
       if (!response.ok) {
         // Try to parse the error response
@@ -392,7 +418,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
       
       // Message successfully stored in database
-      const data = await response.json()
+      let data;
+      try {
+        data = await response.json();
+        console.log('✅ Message saved to database successfully:', data);
+      } catch (error) {
+        console.error('❌ Error parsing response JSON:', error);
+        setError('Error processing server response');
+        setLoadingMessages(false);
+        return;
+      }
       
       // Replace the temporary message with the real one from the database
       setMessages(prev => prev.map(msg => 
@@ -408,9 +443,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       // Keep the message visible in UI even if saving failed
+      console.error('❌ Error in sendMessage:', error);
       setError('Message shown locally only. Could not save to database.')
     } finally {
       setLoadingMessages(false)
+      console.log('ℹ️ Message sending process completed');
     }
   }
 

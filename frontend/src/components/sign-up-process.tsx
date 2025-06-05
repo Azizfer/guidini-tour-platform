@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 
 // Step components
 import BasicInfoStep from "./auth/steps/basic-info-step"
-import UserTypeStep from "./auth/steps/user-type-step"
+import UserTypeStep, { type UserType } from "./auth/steps/user-type-step"
 import TouristPreferencesStep from "./auth/steps/tourist-prefrences"
 import TouristTravelDetailsStep from "./auth/steps/tourist-travel-details-step"
 import GuideExpertiseStep from "./auth/steps/guide-expertise-step"
@@ -32,8 +32,6 @@ export type SignUpStep =
   | "emailVerification"
   | "success"
 
-export type UserType = "touriste" | "guide" | ""
-
 export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   const [currentStep, setCurrentStep] = useState<SignUpStep>("basicInfo")
   const [direction, setDirection] = useState(0)
@@ -44,7 +42,7 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("") // Empty password initially
-  const [userType, setUserType] = useState<UserType>("")
+  const [userType, setUserType] = useState<UserType>(null)
   const [phoneNumber, setPhoneNumber] = useState("")
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null)
@@ -123,7 +121,7 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-white">
+    <div className="relative min-h-screen flex flex-col bg-transparent">
       {/* Header - Only back button */}
       {currentStep !== "basicInfo" && (
         <div className="fixed top-0 left-0 right-0 z-10 py-3 px-3">
@@ -138,8 +136,8 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
       )}
 
       {/* Content */}
-      <div className="flex-1 pt-12 pb-20">
-        <div className="max-w-sm mx-auto px-4">
+      <div className="flex-1 w-full">
+        <div className="w-full h-full">
           <AnimatePresence custom={direction} initial={false} mode="wait">
             <motion.div
               key={currentStep}
@@ -180,10 +178,8 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
 
               {currentStep === "touristPreferences" && (
                 <TouristPreferencesStep
-                  preferences={preferences}
-                  setPreferences={setPreferences}
-                  languages={languages}
-                  setLanguages={setLanguages}
+                  interests={preferences} // Changed from preferences to interests
+                  setInterests={setPreferences} // Changed from setPreferences to setInterests
                   onNext={goToNext}
                   onPrev={goToPrev}
                 />
@@ -274,6 +270,12 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
                       const authService = (await import('@/services/authService')).default;
                       
                       // Prepare registration data
+                      console.log("Value of userType in SuccessStep right before creating registrationData:", userType);
+                      if (!userType) {
+                        console.error("User type is null before registration. This should not happen.");
+                        setRegistrationError("Le type d'utilisateur n'est pas sélectionné. Veuillez revenir en arrière et sélectionner un type.");
+                        return;
+                      }
                       const registrationData = {
                         name,
                         email,
@@ -362,10 +364,10 @@ export default function SignUpProcess({ onBackToSignIn }: SignUpProcessProps) {
       </div>
 
       {/* Progress bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 py-4">
-        <div className="max-w-sm mx-auto px-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-transparent backdrop-blur-md py-2">
+        <div className="w-full px-6">
           <Progress value={progress} className="h-2 w-full" />
-          <div className="flex justify-between mt-2 text-xs text-gray-500">
+          <div className="flex justify-between mt-2 text-xs text-white">
             <span>Étape {getSteps().indexOf(currentStep) + 1}</span>
             <span>{getSteps().length} étapes</span>
           </div>

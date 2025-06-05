@@ -1,9 +1,7 @@
 "use client"
-
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
-import HandWrittenTitle from "@/components/ui/hand-written-title"
 
 interface TouristTravelDetailsStepProps {
   travelCompanions: string[]
@@ -28,13 +26,6 @@ const budgetOptions = [
   { value: "premium", label: "Premium" },
   { value: "luxury", label: "Luxe" },
 ]
-
-const transitionProps = {
-  type: "spring",
-  stiffness: 500,
-  damping: 30,
-  mass: 0.5,
-}
 
 export default function TouristTravelDetailsStep({
   travelCompanions,
@@ -65,157 +56,136 @@ export default function TouristTravelDetailsStep({
   }
 
   return (
-    <div className="flex flex-col">
-      <HandWrittenTitle
-        title="Détails du voyage"
-        subtitle="Aidez-nous à trouver les meilleurs guides pour vous"
-        size="sm"
-        className="mb-6"
-      />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+      {/* Atmospheric effects */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="space-y-6 w-full"
-      >
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-800">Avec qui voyagez-vous?</h2>
-          <motion.div className="flex flex-wrap gap-2" layout transition={transitionProps}>
-            {companionOptions.map((option) => {
-              const isSelected = travelCompanions.includes(option.id)
-              return (
-                <motion.button
-                  key={option.id}
-                  onClick={() => toggleCompanion(option.id)}
-                  layout
-                  initial={false}
-                  animate={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(255, 255, 255, 0.5)",
-                  }}
-                  whileHover={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(240, 240, 240, 0.8)",
-                  }}
-                  whileTap={{
-                    backgroundColor: isSelected ? "#d1f0ed" : "rgba(230, 230, 230, 0.9)",
-                  }}
-                  transition={{
-                    ...transitionProps,
-                    backgroundColor: { duration: 0.1 },
-                  }}
-                  className={`
-                    inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
-                    whitespace-nowrap overflow-hidden ring-1 ring-inset
-                    ${isSelected ? "text-teal-700 ring-teal-200" : "text-gray-600 ring-gray-200"}
-                  `}
-                >
-                  <motion.div
-                    className="relative flex items-center"
-                    animate={{
-                      width: isSelected ? "auto" : "100%",
-                      paddingRight: isSelected ? "1.5rem" : "0",
-                    }}
-                    transition={{
-                      ease: [0.175, 0.885, 0.32, 1.275],
-                      duration: 0.3,
-                    }}
-                  >
-                    <span>{option.label}</span>
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={transitionProps}
-                          className="absolute right-0"
-                        >
-                          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                </motion.button>
-              )
-            })}
-          </motion.div>
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-800">Quel est votre budget?</h2>
-          <motion.div className="flex flex-wrap gap-2" layout transition={transitionProps}>
-            {budgetOptions.map((option) => {
-              const isSelected = budget.includes(option.value)
-              return (
-                <motion.button
-                  key={option.value}
-                  onClick={() => toggleBudget(option.value)}
-                  layout
-                  initial={false}
-                  animate={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(255, 255, 255, 0.5)",
-                  }}
-                  whileHover={{
-                    backgroundColor: isSelected ? "#e6f7f5" : "rgba(240, 240, 240, 0.8)",
-                  }}
-                  whileTap={{
-                    backgroundColor: isSelected ? "#d1f0ed" : "rgba(230, 230, 230, 0.9)",
-                  }}
-                  transition={{
-                    ...transitionProps,
-                    backgroundColor: { duration: 0.1 },
-                  }}
-                  className={`
-                    inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
-                    whitespace-nowrap overflow-hidden ring-1 ring-inset
-                    ${isSelected ? "text-teal-700 ring-teal-200" : "text-gray-600 ring-gray-200"}
-                  `}
-                >
-                  <motion.div
-                    className="relative flex items-center"
-                    animate={{
-                      width: isSelected ? "auto" : "100%",
-                      paddingRight: isSelected ? "1.5rem" : "0",
-                    }}
-                    transition={{
-                      ease: [0.175, 0.885, 0.32, 1.275],
-                      duration: 0.3,
-                    }}
-                  >
-                    <span>{option.label}</span>
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={transitionProps}
-                          className="absolute right-0"
-                        >
-                          <div className="w-4 h-4 rounded-full bg-teal-500 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                </motion.button>
-              )
-            })}
-          </motion.div>
-        </div>
-
-        <div className="pt-4">
-          <Button
-            onClick={handleNext}
-            className="w-full py-6 bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-600 hover:to-teal-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium"
+      <div className="min-h-screen flex items-start justify-center px-4 pt-20 pb-8 relative z-10">
+        <div className="w-full max-w-sm mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-full"
           >
-            Continuer
-          </Button>
+            {/* Header Section */}
+            <div className="text-center mb-6">
+              <p className="text-white text-2xl font-semibold mb-2 drop-shadow-lg">DÉTAILS DU VOYAGE</p>
+              <p className="text-blue-100 text-base drop-shadow-md">Aidez-nous à trouver les meilleurs guides</p>
+            </div>
+
+            {/* Form Content */}
+            <div className="space-y-5 backdrop-blur-sm">
+              <div className="space-y-3">
+                <h2 className="text-base font-medium text-white drop-shadow-md">Avec qui voyagez-vous?</h2>
+                <div className="flex flex-wrap gap-2">
+                  {companionOptions.map((option) => {
+                    const isSelected = travelCompanions.includes(option.id)
+                    return (
+                      <motion.button
+                        key={option.id}
+                        onClick={() => toggleCompanion(option.id)}
+                        initial={false}
+                        animate={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                        }}
+                        whileHover={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.15)",
+                        }}
+                        whileTap={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.2)",
+                        }}
+                        className={`
+                          inline-flex items-center px-3 py-2 rounded-full text-sm font-medium
+                          whitespace-nowrap overflow-hidden ring-1 ring-inset backdrop-blur-sm transition-all duration-300
+                          ${isSelected ? "text-white ring-white/30" : "text-white/80 ring-white/20"}
+                        `}
+                      >
+                        <div className="relative flex items-center">
+                          <span>{option.label}</span>
+                          <AnimatePresence>
+                            {isSelected && (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="ml-2"
+                              >
+                                <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-blue-700" strokeWidth={3} />
+                                </div>
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-base font-medium text-white drop-shadow-md">Quel est votre budget?</h2>
+                <div className="flex flex-wrap gap-2">
+                  {budgetOptions.map((option) => {
+                    const isSelected = budget.includes(option.value)
+                    return (
+                      <motion.button
+                        key={option.value}
+                        onClick={() => toggleBudget(option.value)}
+                        initial={false}
+                        animate={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.1)",
+                        }}
+                        whileHover={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.15)",
+                        }}
+                        whileTap={{
+                          backgroundColor: isSelected ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.2)",
+                        }}
+                        className={`
+                          inline-flex items-center px-3 py-2 rounded-full text-sm font-medium
+                          whitespace-nowrap overflow-hidden ring-1 ring-inset backdrop-blur-sm transition-all duration-300
+                          ${isSelected ? "text-white ring-white/30" : "text-white/80 ring-white/20"}
+                        `}
+                      >
+                        <div className="relative flex items-center">
+                          <span>{option.label}</span>
+                          <AnimatePresence>
+                            {isSelected && (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="ml-2"
+                              >
+                                <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-blue-700" strokeWidth={3} />
+                                </div>
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  onClick={handleNext}
+                  className="w-full h-12 bg-gradient-to-r from-white to-gray-100 hover:from-gray-100 hover:to-white text-blue-600 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-base"
+                >
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

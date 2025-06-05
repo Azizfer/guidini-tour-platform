@@ -165,24 +165,9 @@ PaymentSchema.post('save', async function() {
         // Socket.io events removed
         console.log('Reservation completed for guide:', guideId);
         
-        // Create a notification for the guide
-        try {
-          const Notification = require('./Notification');
-          await Notification.create({
-            userId: guideId,
-            type: 'reservation',
-            title: 'Nouvelle réservation',
-            message: `Vous avez reçu une nouvelle réservation.`,
-            read: false
-          });
-          console.log('Created notification for guide:', guideId);
-        } catch (notifError) {
-          console.error('Error creating notification:', notifError);
-        }
+        // Clean up cache
+        PaymentSchema.statics.guideIdCache.delete(this._id.toString());
       }
-      
-      // Clean up cache
-      PaymentSchema.statics.guideIdCache.delete(this._id.toString());
     }
   } catch (error) {
     console.error('Error in payment post-save hook:', error);

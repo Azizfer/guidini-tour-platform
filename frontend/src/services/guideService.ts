@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// URL directe vers le backend
-const DIRECT_API_URL = 'http://localhost:5001/api';
+// URL directe vers le backend - use environment variable if available
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api` 
+  : 'http://localhost:5001/api';
 
 // Données de guide par défaut pour le développement
 const DEFAULT_GUIDE_DATA = {

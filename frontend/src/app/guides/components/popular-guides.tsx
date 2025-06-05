@@ -1,424 +1,261 @@
 "use client"
-
-import { useState, useRef, useEffect } from "react"
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
-import { Award, ChevronLeft, ChevronRight, Languages, MapPin, Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { motion } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import SectionDivider from "@/components/section-divider"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { ChevronRight, ChevronLeft } from "lucide-react"
+import { useRef, useEffect, useState } from "react"
 import guideService, { Guide } from "@/services/guideService"
 import { useChat } from "@/contexts/chat-context"
-
-// Interface pour les guides transformés pour l'affichage
-interface DisplayGuide {
-  id: string;
-  name: string;
-  specialty: string;
-  image: string;
-  languages: string[];
-  experience: string;
-  bio: string;
-  location: string;
-  availability: string;
-}
-
-// Fonction pour transformer les guides de l'API en format d'affichage
-const transformGuideData = (guide: Guide): DisplayGuide => {
-  // Déterminer la spécialité principale du guide
-  const specialty = guide.expertise && guide.expertise.length > 0 
-    ? guide.expertise[0] === "history" ? "Histoire & Culture" 
-    : guide.expertise[0] === "culture" ? "Culture & Traditions"
-    : guide.expertise[0] === "nature" ? "Nature & Randonnée"
-    : guide.expertise[0] === "gastronomy" ? "Gastronomie"
-    : guide.expertise[0] === "adventure" ? "Sports & Aventure"
-    : guide.expertise[0] === "art" ? "Art & Architecture"
-    : "Guide Touristique"
-    : "Guide Touristique";
-
-  // Utiliser une localisation générique pour tous les guides
-  const location = "Tunisie";
-
-  return {
-    id: guide._id,
-    name: guide.name,
-    specialty,
-    image: guide.profileImage || `/placeholder.svg?height=400&width=400&text=${guide.name}`,
-    languages: guide.languages || ["Français"],
-    experience: `${guide.yearsOfExperience || 1} ans d'expertise`,
-    bio: guide.description || "Guide touristique passionné par la Tunisie et sa culture.",
-    location,
-    availability: "Disponible",
-  };
-};
+import { useRouter } from "next/navigation"
+import LoadingScreen from "@/components/loading-screen"
 
 export default function PopularGuides() {
-  const [guides, setGuides] = useState<DisplayGuide[]>([])
-  const [currentGuide, setCurrentGuide] = useState(0)
-  const [direction, setDirection] = useState(0)
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
-  const [isHovering, setIsHovering] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // Get the chat context
-  const { openChat, refreshConversations } = useChat()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [guides, setGuides] = useState<Guide[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const { openChat } = useChat()
+  const [showLoading, setShowLoading] = useState(false)
+  const router = useRouter()
 
-  // Scroll animation references
-  const sectionRef = useRef(null)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "end start"],
-  })
-
-  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [0, 1, 1, 0])
-  const y = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [100, 0, 0, 100])
-  const scale = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [0.8, 1, 1, 0.8])
-
-  const nextGuide = () => {
-    setDirection(1)
-    setCurrentGuide((prev) => (prev + 1) % guides.length)
+  // Handle contact guide button click
+  const handleContactGuide = (guide: Guide) => {
+    if (guide && guide._id) {
+      // Create a ChatUser object from the guide data
+      const chatUser = {
+        id: guide._id,
+        name: guide.name,
+        avatar: guide.profileImage || guide.avatar,
+        online: false
+      }
+      // Open chat with the selected guide
+      openChat(chatUser)
+    }
   }
 
-  const prevGuide = () => {
-    setDirection(-1)
-    setCurrentGuide((prev) => (prev - 1 + guides.length) % guides.length)
-  }
-
-  // Récupérer les guides depuis l'API
+  // Fetch guides data from the API
   useEffect(() => {
     const fetchGuides = async () => {
       try {
-        setLoading(true);
-        console.log('Fetching guides from API...');
-        const apiGuides = await guideService.getAllGuides();
-        console.log('Guides fetched:', apiGuides);
-        
-        if (apiGuides && apiGuides.length > 0) {
-          // Transformer les données des guides pour l'affichage
-          const displayGuides = apiGuides.map(transformGuideData);
-          console.log('Transformed guides:', displayGuides);
-          setGuides(displayGuides);
-        } else {
-          console.warn('No guides returned from API');
-          // Utiliser des guides par défaut en cas d'absence de données
-          setGuides([
-            {
-              id: "1",
-              name: "Guide par défaut",
-              specialty: "Guide Touristique",
-              image: "/placeholder.svg?height=400&width=400&text=Guide",
-              languages: ["Français"],
-              experience: "1 an",
-              bio: "Guide touristique passionné par la Tunisie et sa culture.",
-              location: "Tunisie",
-              availability: "Disponible",
-            }
-          ]);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération des guides:", error);
-        // Utiliser des guides par défaut en cas d'erreur
-        setGuides([
-          {
-            id: "1",
-            name: "Guide par défaut",
-            specialty: "Guide Touristique",
-            image: "/placeholder.svg?height=400&width=400&text=Guide",
-            languages: ["Français"],
-            experience: "1 an",
-            bio: "Guide touristique passionné par la Tunisie et sa culture.",
-            location: "Tunisie",
-            availability: "Disponible",
-          }
-        ]);
+        setIsLoading(true)
+        const guidesData = await guideService.getAllGuides()
+        setGuides(guidesData)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching guides:', err)
+        setError('Impossible de charger les guides')
       } finally {
-        setLoading(false);
+        setIsLoading(false)
       }
-    };
+    }
 
-    fetchGuides();
-  }, []);
+    fetchGuides()
+  }, [])
 
-  // Rotation automatique des guides (pause on hover)
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 400
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      })
+    }
+  }
+
   useEffect(() => {
-    if (isHovering || !isAutoPlaying || guides.length === 0) return
+    const interval = setInterval(() => {
+      if (scrollRef.current) {
+        const scrollAmount = 320 // One card width
+        scrollRef.current.scrollBy({
+          left: scrollAmount,
+          behavior: "smooth",
+        })
 
-    autoPlayRef.current = setInterval(() => {
-      nextGuide()
-    }, 5000)
-
-    return () => {
-      if (autoPlayRef.current) {
-        clearInterval(autoPlayRef.current)
+        // Reset to beginning if we've reached the end
+        if (scrollRef.current.scrollLeft + scrollRef.current.clientWidth >= scrollRef.current.scrollWidth - 50) {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ left: 0, behavior: "smooth" })
+            }
+          }, 2000)
+        }
       }
-    }
-  }, [isHovering, isAutoPlaying, guides.length])
+    }, 4000) // Auto-slide every 4 seconds
 
-  // Arrêter l'autoplay quand l'utilisateur interagit
-  const handleUserInteraction = () => {
-    setIsAutoPlaying(false)
-    if (autoPlayRef.current) {
-      clearInterval(autoPlayRef.current)
-    }
-  }
-
-  const variants = {
-    enter: (direction: number) => {
-      return {
-        x: direction > 0 ? 1000 : -1000,
-        opacity: 0,
-      }
-    },
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => {
-      return {
-        zIndex: 0,
-        x: direction < 0 ? 1000 : -1000,
-        opacity: 0,
-      }
-    },
-  }
-
-  // Afficher un message de chargement si les guides sont en cours de chargement
-  if (loading || guides.length === 0) {
-    return (
-      <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-3 text-slate-900 tracking-tight">Chargement des guides...</h2>
-        </div>
-      </section>
-    )
-  }
+    return () => clearInterval(interval)
+  }, [])
 
   return (
-    <>
-      <SectionDivider variant="curve" color="#f8fafc" />
-
-      <motion.section ref={sectionRef} className="py-20 bg-gradient-to-b from-slate-50 to-white" style={{ opacity, y }}>
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-12 fade-in"
-          >
-            <Badge className="mb-3 px-3 py-1 text-sm font-medium bg-slate-100 text-slate-800 rounded-full">
-              Guides Certifiés
-            </Badge>
-            <h2 className="text-3xl font-bold mb-3 text-slate-900 tracking-tight">Voyagez avec des Experts Locaux</h2>
-            <p className="text-slate-600 max-w-3xl mx-auto text-base">
-              Découvrez nos guides passionnés qui vous feront vivre une expérience authentique de la Tunisie
-            </p>
-          </motion.div>
-
-          <motion.div style={{ scale }} transition={{ duration: 0.5 }} className="relative max-w-5xl mx-auto">
-            {/* Left navigation button */}
-            <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 z-50">
+    <section className="py-16 bg-white">
+      <div className="container mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <Badge className="mb-4 px-4 py-2 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
+            Guides Certifiés
+          </Badge>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">Voyagez avec des Experts Locaux</h2>
+            <div className="flex gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
-                onClick={() => {
-                  prevGuide()
-                  handleUserInteraction()
-                }}
+                className="rounded-full w-10 h-10 border-gray-300"
+                onClick={() => scroll("left")}
               >
                 <ChevronLeft className="h-5 w-5" />
-                <span className="sr-only">Précédent</span>
               </Button>
-            </div>
-
-            {/* Right navigation button */}
-            <div className="absolute top-1/2 -right-16 transform -translate-y-1/2 z-50">
               <Button
-                variant="ghost"
                 size="icon"
-                className="rounded-full bg-white/70 hover:bg-white/90 text-slate-700 shadow-md h-10 w-10 md:h-12 md:w-12"
-                onClick={() => {
-                  nextGuide()
-                  handleUserInteraction()
-                }}
+                className="rounded-full w-10 h-10 bg-gray-900 hover:bg-gray-800"
+                onClick={() => scroll("right")}
               >
                 <ChevronRight className="h-5 w-5" />
-                <span className="sr-only">Suivant</span>
               </Button>
             </div>
-            
-            <Card
-              className="relative overflow-hidden shadow-xl rounded-2xl border-none"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              <CardContent className="p-0">
+          </div>
+          <p className="text-gray-600 max-w-2xl mx-auto hidden">
+            Découvrez nos guides passionnés qui vous feront vivre une expérience authentique
+          </p>
+        </motion.div>
 
-                {/* Carousel de guides */}
-                <div className="relative h-[450px] md:h-[450px] overflow-hidden bg-gradient-to-r from-slate-50 to-white">
-                  <AnimatePresence initial={false} custom={direction} mode="wait">
-                    <motion.div
-                      key={currentGuide}
-                      custom={direction}
-                      variants={variants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={{
-                        x: { type: "spring", stiffness: 300, damping: 30 },
-                        opacity: { duration: 0.2 },
-                      }}
-                      className="absolute w-full h-full"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full p-8 md:p-10">
-                        <div className="flex flex-col justify-center items-center md:items-end">
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5 }}
-                            className="relative"
-                          >
-                            <div className="relative">
-                              <Avatar className="h-56 w-56 border-4 border-white shadow-lg">
-                                <AvatarImage
-                                  src={guides[currentGuide].image || "/placeholder.svg"}
-                                  alt={guides[currentGuide].name}
-                                />
-                                <AvatarFallback className="text-4xl bg-slate-200 text-slate-800">
-                                  {guides[currentGuide].name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-
-                              {/* Status badge */}
-                              <Badge className="absolute bottom-4 right-4 bg-emerald-500 text-white border-none px-4 py-1.5 text-sm font-medium">
-                                {guides[currentGuide].availability}
-                              </Badge>
-                            </div>
-
-                            <div className="mt-4 flex justify-center">
-                              <div className="flex items-center">
-                                <Badge className="bg-blue-100 text-blue-800 border-none px-3 py-1 text-sm font-medium">
-                                  {guides[currentGuide].specialty}
-                                </Badge>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-3 flex justify-center">
-                              <div className="flex items-center text-slate-700">
-                                <Award className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-base font-medium">{guides[currentGuide].experience}</span>
-                              </div>
-                            </div>
-                          </motion.div>
-                        </div>
-
-                        <div className="flex flex-col justify-center">
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                            className="space-y-6 stagger-fade-in"
-                          >
-                            <div>
-                              <h3 className="text-3xl font-bold text-slate-900 mb-2">{guides[currentGuide].name}</h3>
-                              <p className="text-xl text-slate-700 mb-3">{guides[currentGuide].specialty}</p>
-                            </div>
-
-                            <p className="text-slate-600 italic text-sm">"{guides[currentGuide].bio}"</p>
-
-                            <div>
-                              <div className="flex items-center mb-3">
-                                <Languages className="w-5 h-5 mr-2 text-slate-500" />
-                                <span className="text-slate-700 font-medium text-base">Langues parlées</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {guides[currentGuide].languages.map((language) => (
-                                  <Badge
-                                    key={language}
-                                    variant="outline"
-                                    className="bg-white border-slate-200 text-slate-700 text-sm px-3 py-1"
-                                  >
-                                    {language}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="mt-8 flex flex-wrap gap-3">
-                              <Button 
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center relative overflow-hidden group"
-                                onClick={() => {
-                                  // Simplify the contact guide function to be more direct
-                                  console.log('Opening chat with guide:', guides[currentGuide].name);
-                                  
-                                  // Direct approach - open chat immediately
-                                  openChat({
-                                    id: guides[currentGuide].id,
-                                    name: guides[currentGuide].name,
-                                    avatar: guides[currentGuide].image,
-                                    online: true
-                                  });
-                                  
-                                  // Then refresh conversations in the background
-                                  refreshConversations().catch(error => {
-                                    console.log('Background refresh error:', error);
-                                    // Non-critical error, chat is already open
-                                  });
-                                }}
-                              >
-                                <span className="relative z-10 flex items-center">
-                                  Contacter
-                                  <Mail className="ml-2 h-5 w-5" />
-                                </span>
-                                <span className="absolute inset-0 bg-blue-700 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
-                              </Button>
-
-                              <Button 
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-base font-medium flex items-center"
-                                onClick={() => {
-                                  window.location.href = `/guides/${guides[currentGuide].id}`;
-                                }}
-                              >
-                                Voir le profil
-                                <ChevronRight className="ml-2 h-5 w-5" />
-                              </Button>
-                            </div>
-                          </motion.div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
+        <div
+          ref={scrollRef}
+          className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-6 ml-0"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {isLoading ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, index) => (
+              <div key={`skeleton-${index}`} className="flex-shrink-0 w-[260px] h-[380px]">
+                <div className="bg-white rounded-2xl p-4 shadow-lg animate-pulse h-full flex flex-col">
+                  <div className="relative mb-3 flex justify-center">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200"></div>
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                  <div className="h-5 bg-gray-200 rounded w-1/2 mx-auto mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-3"></div>
+                  <div className="h-12 bg-gray-200 rounded w-full mx-auto mb-3"></div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-3"></div>
+                  <div className="mt-auto flex gap-2">
+                    <div className="h-8 bg-gray-200 rounded w-full"></div>
+                    <div className="h-8 bg-gray-200 rounded w-full"></div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            ))
+          ) : error ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <p className="text-red-500">{error}</p>
+            </div>
+          ) : guides.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <p className="text-gray-500">Aucun guide disponible pour le moment</p>
+            </div>
+          ) : (
+            guides.map((guide, index) => (
+              <motion.div
+                key={guide._id}
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="flex-shrink-0 w-[260px] h-[380px]"
+              >
+              <div className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 text-center h-full flex flex-col">
+                <div className="relative mb-3 flex justify-center">
+                  <div className="w-24 h-24 rounded-full overflow-hidden">
+                    <img
+                      src={guide.profileImage || guide.avatar || "/placeholder.svg"}
+                      alt={guide.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="absolute -bottom-2 -right-2">
+                    <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-white shadow-md border">
+                      <span className="text-xs font-medium text-gray-900">{guide.rating || '-'}</span>
+                    </div>
+                  </div>
+                </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex justify-center mt-12 fade-in"
-          >
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300 inline-flex items-center"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = '/guides';
-              }}
-            >
-              Voir tous les guides
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </motion.div>
+                <h3 className="font-bold text-gray-900 mb-1 text-lg">{guide.name}</h3>
+                <div className="flex justify-center mb-2">
+                  <Badge className="bg-gray-100 text-gray-800 border-none px-3 py-1 text-xs font-medium">
+                    {guide.expertise && guide.expertise.length > 0 
+                      ? guide.expertise.slice(0, 2).join(' · ') 
+                      : 'Guide Professionnel'}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-center text-gray-600 mb-1">
+                  <span className="text-sm">{guide.location || ''}</span>
+                </div>
+
+                <p className="text-gray-600 text-xs mb-3 line-clamp-2">{guide.bio || guide.description || ''}</p>
+
+                <div className="mb-3">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-gray-700 font-medium text-sm">Langues</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-center">
+                    {guide.languages && guide.languages.length > 0 
+                      ? guide.languages.slice(0, 2).map((language) => (
+                          <Badge
+                            key={language}
+                            variant="outline"
+                            className="bg-gray-50 border-gray-200 text-gray-700 text-xs px-2 py-1"
+                          >
+                            {language}
+                          </Badge>
+                        ))
+                      : null
+                    }
+                  </div>
+                </div>
+
+                <div className="mt-auto flex gap-2">
+                  <Button 
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full py-1.5 text-sm font-medium"
+                    onClick={() => handleContactGuide(guide)}
+                  >
+                    Contacter
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full py-1.5 text-sm font-medium"
+                    asChild
+                  >
+                    <Link href={`/guides/${guide._id}`}>
+                      Profil
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )))}
         </div>
-      </motion.section>
-    </>
+
+        <div className="flex justify-center mt-12">
+          <Button
+            className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-6 py-2 font-medium text-base shadow-md hover:shadow-lg transition-all duration-300"
+            onClick={() => {
+              setShowLoading(true)
+              setTimeout(() => {
+                router.push("/guides")
+              }, 2000)
+            }}
+          >
+            {showLoading && <LoadingScreen />}
+            Voir tous les guides
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+    </section>
   )
 }

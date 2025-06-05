@@ -85,36 +85,44 @@ export default function GuideGallery() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-slate-900">Ma Galerie</h2>
+        <h2 className="text-3xl font-bold text-gray-900">Ma Galerie</h2>
         <Dialog open={isAddImageOpen} onOpenChange={setIsAddImageOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0">
+            <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all">
               <PlusIcon className="h-4 w-4" />
-              Ajouter une nouvelle image
+              Ajouter une image
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Ajouter une image à la galerie</DialogTitle>
-              <DialogDescription className="text-slate-500">
-                Téléchargez une nouvelle image et associez-la à une visite.
+              <DialogTitle className="text-xl font-semibold text-gray-900">Ajouter une image</DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Téléchargez une nouvelle image et associez-la à un tour.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="imageTitle">Titre de l'image</Label>
+              <div className="space-y-2">
+                <Label htmlFor="imageTitle" className="text-sm font-medium text-gray-700">
+                  Titre de l'image
+                </Label>
                 <Input
                   id="imageTitle"
                   placeholder="Entrez le titre de l'image"
                   value={newImage.title}
                   onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
+                  className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="tourSelect">Visite associée</Label>
+              <div className="space-y-2">
+                <Label htmlFor="tourSelect" className="text-sm font-medium text-gray-700">
+                  Tour associé
+                </Label>
                 <Select value={newImage.tourId} onValueChange={(value) => setNewImage({ ...newImage, tourId: value })}>
-                  <SelectTrigger id="tourSelect">
-                    <SelectValue placeholder="Sélectionnez une visite" />
+                  <SelectTrigger
+                    id="tourSelect"
+                    className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <SelectValue placeholder="Sélectionnez un tour" />
                   </SelectTrigger>
                   <SelectContent>
                     {mockTours.map((tour) => (
@@ -125,17 +133,28 @@ export default function GuideGallery() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="imageFile">Image</Label>
-                <Input id="imageFile" type="file" />
+              <div className="space-y-2">
+                <Label htmlFor="imageFile" className="text-sm font-medium text-gray-700">
+                  Fichier image
+                </Label>
+                <Input
+                  id="imageFile"
+                  type="file"
+                  accept="image/*"
+                  className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddImageOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddImageOpen(false)}
+                className="rounded-lg border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
                 Annuler
               </Button>
-              <Button onClick={handleAddImage} className="bg-blue-600 hover:bg-blue-700 text-white border-0">
-                Télécharger
+              <Button onClick={handleAddImage} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                Ajouter
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -146,28 +165,28 @@ export default function GuideGallery() {
         {images.map((image) => (
           <Card
             key={image.id}
-            className="overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all duration-300"
+            className="overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-300 rounded-xl"
           >
             <div className="relative">
               <img src={image.url || "/placeholder.svg"} alt={image.title} className="w-full h-48 object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
-                <h3 className="text-white font-bold">{image.title}</h3>
-                <p className="text-white/80 text-sm">{image.tourName}</p>
+                <h3 className="text-white font-semibold text-lg">{image.title}</h3>
+                <p className="text-white/90 text-sm">{image.tourName}</p>
               </div>
-              <Badge className="absolute top-2 right-2 bg-blue-500 text-white">
+              <Badge className="absolute top-3 right-3 bg-blue-600 text-white border-0">
                 {new Date(image.date).toLocaleDateString()}
               </Badge>
             </div>
             <CardContent className="p-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <PhotoIcon className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-slate-600">{image.tourName}</span>
+                <span className="text-sm text-gray-600 truncate">{image.tourName}</span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => deleteImage(image.id)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full h-8 w-8"
               >
                 <TrashIcon className="h-4 w-4" />
               </Button>

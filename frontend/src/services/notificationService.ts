@@ -200,45 +200,8 @@ const notificationService = {
       
       console.log('Booking notification payloads:', { touristNotification, guideNotification });
 
-      // Try direct API endpoint for notifications
-      try {
-        // Create tourist notification
-        console.log('Creating tourist booking notification at:', `${API_URL}/notification`);
-        const touristResponse = await axios.post(`${API_URL}/notification`, 
-          touristNotification, 
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        console.log('Tourist booking notification response:', touristResponse.status, touristResponse.data);
-      } catch (touristError: any) {
-        console.error('Error creating tourist booking notification:', 
-          touristError.response?.data || touristError.message);
-      }
-      
-      try {
-        // Create guide notification
-        console.log('Creating guide booking notification at:', `${API_URL}/notification`);
-        const guideResponse = await axios.post(`${API_URL}/notification`, 
-          guideNotification, 
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        console.log('Guide booking notification response:', guideResponse.status, guideResponse.data);
-      } catch (guideError: any) {
-        console.error('Error creating guide booking notification:', 
-          guideError.response?.data || guideError.message);
-      }
-      
-      // Also try the original endpoint format as fallback
-      console.log('Sending to original API URL:', `${API_URL}/notifications`);
+      // Send both notifications in a single request
+      console.log('Sending to API URL:', `${API_URL}/notifications`);
       const response = await axios.post(`${API_URL}/notifications`, 
         { 
           touristNotification,
@@ -256,6 +219,9 @@ const notificationService = {
 
       // Clear the cache to force a refresh
       cachedNotifications = null;
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new Event('notificationUpdate'));
       
       return true;
     } catch (error) {
@@ -420,72 +386,60 @@ const notificationService = {
       
       console.log('Token found:', token.substring(0, 10) + '...');
 
-      // Only create notification for the guide, not for the tourist
-      const guideNotification = {
-        title: "Paiement reçu",
-        description: `Vous avez reçu un paiement de ${amount} TND pour ${tourTitle}.`,
+      // Check if the guide is reserving their own tour
+      const isSelfReservation = userId === guideId;
+      console.log('Is self reservation?', isSelfReservation, { userId, guideId });
+      
+      // Create notifications
+      const touristNotification = {
+        title: "Paiement confirmé",
+        description: `Votre paiement de ${amount} TND pour ${tourTitle} a été confirmé.`,
         type: "payment",
         tourId,
-        recipient: guideId, // This is the key field expected by the backend
+        recipient: userId,
         read: false,
         amount
       };
       
-      console.log('Guide notification payload:', guideNotification);
+      // Only create guide notification if it's not a self-reservation
+      const notificationPayload = isSelfReservation 
+        ? { touristNotification } 
+        : { 
+            touristNotification,
+            guideNotification: {
+              title: "Nouvelle réservation",
+              description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${amount} TND.`,
+              type: "booking",
+              tourId,
+              recipient: guideId,
+              read: false,
+              amount
+            }
+          };
       
-      // Create only the guide notification
-      console.log('Creating guide notification at:', `${API_URL}/notifications`);
-      try {
-        const response = await axios.post(`${API_URL}/notifications`, 
-          guideNotification, 
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+      console.log('Payment notifications payload:', notificationPayload);
+      
+      // Send notifications in a single request
+      console.log('Creating payment notifications at:', `${API_URL}/notifications`);
+      const response = await axios.post(
+        `${API_URL}/notifications`, 
+        notificationPayload, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
-        );
-        
-        console.log('Guide notification created successfully:', response.status, response.data);
-        
-        // Dispatch a custom event to trigger notification refresh
-        window.dispatchEvent(new Event('notificationUpdate'));
-        return true;
-      } catch (error: any) {
-        console.error('Error creating guide notification:', 
-          error.response?.data || error.message);
-        
-        // Try alternative approach as fallback
-        console.log('Trying alternative notification creation as fallback');
-        
-        try {
-          // Try to create guide notification with a different format
-          console.log('Creating guide notification with data:', JSON.stringify(guideNotification));
-          const guideResponse = await axios.post(`${API_URL}/notifications`, 
-            { notification: guideNotification }, 
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          console.log('Guide notification created:', guideResponse.status);
-          return true;
-        } catch (e: any) {
-          console.error('Failed to create guide notification:', e.message);
-          console.error('Error details:', e.response?.data || 'No response data');
-          // Try to determine if guide recipient is missing or invalid
-          if (!guideId || guideId === 'guide-id-required') {
-            console.error('Guide ID is missing or invalid:', guideId);
-          }
-          return false;
         }
-      }
+      );
+      
+      console.log('Payment notifications created successfully:', response.status, response.data);
       
       // Clear the cache to force a refresh
       cachedNotifications = null;
       console.log('Notification cache cleared after creation');
+      
+      // Dispatch a custom event to trigger notification refresh
+      window.dispatchEvent(new Event('notificationUpdate'));
       
       return true;
     } catch (error) {
@@ -509,24 +463,29 @@ const notificationService = {
       // Create local notifications as fallback
       console.log('API call failed, creating local notifications as fallback');
       
+      // Check if the guide is reserving their own tour
+      const isSelfReservation = userId === guideId;
+      
       // Create tourist notification locally
       addLocalNotification({
-        title: "Paiement réussi",
+        title: "Paiement confirmé",
         description: `Votre paiement de ${amount} TND pour ${tourTitle} a été confirmé.`,
         type: "payment",
         tourId,
         userId
       });
       
-      // Create guide notification locally
-      addLocalNotification({
-        title: "Nouveau paiement reçu",
-        description: `Vous avez reçu un paiement de ${amount} TND pour ${tourTitle}.`,
-        type: "payment",
-        tourId,
-        guideId,
-        amount
-      });
+      // Create guide notification locally only if not self-reservation
+      if (!isSelfReservation) {
+        addLocalNotification({
+          title: "Nouvelle réservation",
+          description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${amount} TND.`,
+          type: "booking",
+          tourId,
+          guideId,
+          amount
+        });
+      }
       
       return true; // Return true since we created local notifications
     }

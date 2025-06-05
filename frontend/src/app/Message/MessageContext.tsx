@@ -1,8 +1,10 @@
+"use client"
+
 // Frontend: src/app/MessageContext/MessageContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../LogingContext/AuthContext';
-import io from 'socket.io-client'; //library that enbales realtime communincation
+import io from 'socket.io-client';
 
 interface Message {
   _id: string;
