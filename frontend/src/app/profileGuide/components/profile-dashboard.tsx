@@ -37,12 +37,11 @@ interface EnhancedGuide extends Guide {
   toursCount?: number
   completedToursCount?: number
   privateToursCount?: number
-  reservationsCount?: number
+  paymentsReceived?: number
   unreadNotifications?: number
   unreadMessages?: number
   totalRevenue?: number
   touristsCount?: number
-  paymentsReceived?: number
   experience?: number
   avatar?: string
   bio?: string
@@ -100,8 +99,8 @@ export default function ProfileDashboard() {
         }
 
         // Extract tour stats from guide data
-        const stats = guideData.stats || {}
-        console.log("Guide stats from API:", stats)
+        const statsAny: any = guideData.stats || {}
+        console.log("Guide stats from API:", statsAny)
 
         // Transform the data to match our UI needs
         const enhancedGuide: EnhancedGuide = {
@@ -113,19 +112,18 @@ export default function ProfileDashboard() {
           // Use languages from preferences
           languages: userLanguages,
           // Get stats from the stats object in the guide data
-          toursCount: stats.activeTours || 0,
-          completedToursCount: stats.completedTours || 0,
+          toursCount: statsAny.activeTours || 0,
+          completedToursCount: statsAny.completedTours || 0,
           // For private tours, we'll use a default value of 0 since the backend doesn't provide it directly
           // In a real implementation, you would need to add this to the backend API
           privateToursCount: 0,
-          reservationsCount: stats.totalBookings || 0,
-          rating: stats.averageRating || 0,
+          paymentsReceived: statsAny.paymentsReceived || 0,
+          rating: statsAny.averageRating || 0,
           reviewCount: guideData.reviewCount || 0,
           unreadNotifications: guideData.unreadMessages || 0,
           unreadMessages: guideData.unreadMessages || 0,
           totalRevenue: guideData.totalRevenue || 0,
           touristsCount: guideData.touristsCount || 0,
-          paymentsReceived: guideData.paymentsReceived || 0,
           // Ne pas utiliser les gouvernorats couverts
           location: guideData.location || "Tunisie",
         }
@@ -291,12 +289,12 @@ export default function ProfileDashboard() {
 
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("reservations")}
-                active={activeTab === "reservations"}
+                onClick={() => setActiveTab("payments")}
+                active={activeTab === "payments"}
                 className="flex items-center gap-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50"
               >
                 <UsersIcon className="h-5 w-5" />
-                <span>Réservations</span>
+                <span>Paiements</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -355,7 +353,7 @@ export default function ProfileDashboard() {
 
           {activeTab === "tours" && <ToursManagement />}
           {activeTab === "gallery" && <GuideGallery />}
-          {activeTab === "reservations" && <GuideReservations />}
+          {activeTab === "payments" && <GuideReservations />}
           {activeTab === "help" && <Help />}
         </div>
       </main>

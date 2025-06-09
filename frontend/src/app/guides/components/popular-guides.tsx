@@ -8,6 +8,8 @@ import { useRef, useEffect, useState } from "react"
 import guideService, { Guide } from "@/services/guideService"
 import { useChat } from "@/contexts/chat-context"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/app/LogingContext/AuthContext"
+import { useToast } from "@/components/ui/use-toast"
 import LoadingScreen from "@/components/loading-screen"
 
 export default function PopularGuides() {
@@ -16,20 +18,30 @@ export default function PopularGuides() {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const { openChat } = useChat()
+  const { isAuthenticated } = useAuth()
+  const { toast } = useToast()
   const [showLoading, setShowLoading] = useState(false)
   const router = useRouter()
 
   // Handle contact guide button click
   const handleContactGuide = (guide: Guide) => {
+    // must be authenticated
+    if (!isAuthenticated) {
+      toast({
+        title: "Veuillez vous connecter",
+        description: "Vous devez être connecté pour contacter un guide.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (guide && guide._id) {
-      // Create a ChatUser object from the guide data
       const chatUser = {
         id: guide._id,
         name: guide.name,
         avatar: guide.profileImage || guide.avatar,
-        online: false
+        online: false,
       }
-      // Open chat with the selected guide
       openChat(chatUser)
     }
   }
@@ -230,7 +242,7 @@ export default function PopularGuides() {
                     className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full py-1.5 text-sm font-medium"
                     asChild
                   >
-                    <Link href={`/guides/${guide._id}`}>
+                    <Link href={`/Profile/${guide._id}`}>
                       Profil
                     </Link>
                   </Button>
@@ -246,7 +258,7 @@ export default function PopularGuides() {
             onClick={() => {
               setShowLoading(true)
               setTimeout(() => {
-                router.push("/guides")
+                router.push("/Guides")
               }, 2000)
             }}
           >

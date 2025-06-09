@@ -33,13 +33,6 @@ const guideStatsSchema = new mongoose.Schema({
     min: 0
   },
   
-  // Booking statistics
-  reservations: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  
   // Financial statistics
   totalRevenue: {
     type: Number,

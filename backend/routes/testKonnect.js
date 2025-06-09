@@ -75,7 +75,7 @@ router.post('/test-payment-completion', async (req, res) => {
     console.log('DEBUG: Test payment completion endpoint called');
     
     // Get required models
-    const Payment = require('../models/Payment');
+    const Payment = require('../models/payment');
     const Tour = require('../models/Tour');
     const GuideStats = require('../models/GuideStats');
     

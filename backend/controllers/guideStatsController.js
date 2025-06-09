@@ -110,11 +110,8 @@ exports.recalculateAllStats = async (req, res) => {
       tourStatus: 'completed'
     });
     
-    // Count total reservations
-    const tours = await Tour.find({ guideId });
-    const reservations = tours.reduce((sum, tour) => sum + (tour.bookings || 0), 0);
-    
     // Calculate total revenue (if price data is available)
+    const tours = await Tour.find({ guideId });
     const totalRevenue = tours.reduce((sum, tour) => {
       const price = tour.price || 0;
       const bookings = tour.bookings || 0;
@@ -141,7 +138,6 @@ exports.recalculateAllStats = async (req, res) => {
         activeTours,
         privateTours,
         completedTours,
-        reservations,
         totalRevenue,
         touristsCount,
         rating,
@@ -175,7 +171,7 @@ exports.incrementStat = async (req, res) => {
     // Validate that statName is a valid field in our schema
     const validStats = [
       'activeTours', 'privateTours', 'completedTours', 
-      'reservations', 'totalRevenue', 'touristsCount',
+      'totalRevenue', 'touristsCount',
       'paymentsReceived', 'reviewCount'
     ];
     

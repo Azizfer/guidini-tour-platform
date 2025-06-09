@@ -123,9 +123,14 @@ PaymentSchema.pre('save', async function(next) {
       
       // Only increment if this is a new payment or status changed to completed
       if (isNew || this.isModified('status')) {
-        console.log('Incrementing reservations count for guide:', guideId);
-        // Increment reservations count
-        stats.reservations += 1;
+        console.log('Incrementing paymentsReceived count for guide:', guideId);
+        // Increment paymentsReceived count
+        stats.paymentsReceived += 1;
+        
+        // Increment tourists count based on participants
+        if (this.participants) {
+          stats.touristsCount += this.participants;
+        }
         
         // Also increment revenue if amount is available
         if (this.amount) {
@@ -134,7 +139,7 @@ PaymentSchema.pre('save', async function(next) {
         
         // Save the updated stats
         await stats.save();
-        console.log(`Updated guide stats: reservations=${stats.reservations}, revenue=${stats.totalRevenue}`);
+        console.log(`Updated guide stats: paymentsReceived=${stats.paymentsReceived}, touristsCount=${stats.touristsCount}, revenue=${stats.totalRevenue}`);
       }
     }
     next();

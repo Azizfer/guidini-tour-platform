@@ -74,7 +74,7 @@ exports.createReservation = async (req, res) => {
     // Save the reservation
     const savedReservation = await newReservation.save();
     
-    // Update guide stats - increment reservations count
+    // Update guide stats - increment tourists count
     try {
       // Find or create stats for this guide
       let stats = await GuideStats.findOne({ guideId });
@@ -82,8 +82,9 @@ exports.createReservation = async (req, res) => {
         stats = new GuideStats({ guideId });
       }
       
-      // Increment reservations count
-      stats.reservations += 1;
+      // Increment tourists count based on participants
+      const participantsNumber = participants || 1;
+      stats.touristsCount += participantsNumber;
       
       // Also increment revenue if totalPrice is available
       if (totalPrice) {
@@ -172,5 +173,28 @@ exports.getReservationById = async (req, res) => {
   } catch (error) {
     console.error('Error fetching reservation:', error);
     res.status(500).json({ message: 'Erreur lors de la récupération de la réservation', error: error.message });
+  }
+};
+
+// Check if tourist participated in a specific tour (by reservation)
+exports.checkParticipation = async (req, res) => {
+  try {
+    const { tourId, touristId } = req.query;
+
+    if (!tourId || !touristId) {
+      return res.status(400).json({ message: 'tourId et touristId sont requis' });
+    }
+
+    // Find a reservation matching tour & tourist where status is confirmed or completed
+    const reservation = await Reservation.findOne({
+      tourId,
+      touristId,
+      status: { $in: ['confirmed', 'completed'] },
+    });
+
+    return res.status(200).json({ participated: !!reservation });
+  } catch (error) {
+    console.error('Error checking participation:', error);
+    return res.status(500).json({ message: 'Erreur lors de la vérification de participation', error: error.message });
   }
 };

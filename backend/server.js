@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -18,7 +20,10 @@ const guideRoutes = require('./routes/guides');
 const guideStatsRoutes = require('./routes/guideStatsRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const testRoutes = require('./routes/test'); // Added test routes
+const profileRoutes = require('./routes/profile'); // Add profile routes
+const guideToursRoutes = require('./routes/guideToursRoutes');
 const app = express();
+const httpServer = createServer(app);
 
 // Middleware for CORS - Enhanced for better frontend-backend communication
 app.use(cors({
@@ -67,6 +72,10 @@ app.use((req, res, next) => {
   
   // Restore original console.log after request is handled
   console.log = originalLog;
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
 });
 
 // Supprimer les logs d'erreur JWT
@@ -121,8 +130,31 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/guides', guideRoutes);
+app.use('/api/guides', guideToursRoutes);
 app.use('/api', guideStatsRoutes);
 app.use('/api', reservationRoutes); // Add reservation routes
+app.use('/api/profiles', profileRoutes); // Add profile routes
+
+// Configure Socket.IO
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('New client connected');
+  
+  // Handle authentication
+  socket.on('authenticate', (token) => {
+    // Verify token logic here
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
 
 // Connect to MongoDB
 const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Guidini';
@@ -133,9 +165,9 @@ mongoose.connect(dbUri)
     // Only start the server after successfully connecting to MongoDB
     const PORT = process.env.PORT || 5001;
     
-    // Start the server without Socket.io
-    app.listen(PORT, () => {
-      // Server started silently
+    // Start the server with Socket.io
+    httpServer.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {

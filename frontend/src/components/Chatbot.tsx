@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { X, Loader2, ArrowRight, ChevronUp, ChevronDown, Compass } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { useAuth } from "@/app/LogingContext/AuthContext"
 
 interface Message {
   id: string
@@ -17,6 +18,9 @@ interface Message {
 }
 
 export default function Chatbot() {
+  const { isAuthenticated } = useAuth()
+
+  // Hooks must be called unconditionally on every render
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -57,27 +61,27 @@ export default function Chatbot() {
     }
   }
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
       container.scrollTop = container.scrollHeight
     }
-  }
+  }, [])
 
   // Check if scrolling is needed
-  const checkScrollable = () => {
+  const checkScrollable = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
       setShowSlider(container.scrollHeight > container.clientHeight)
     }
-  }
+  }, [])
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
     scrollToBottom()
     // Check if we need to show the slider after messages update
     setTimeout(checkScrollable, 100)
-  }, [messages])
+  }, [messages, scrollToBottom, checkScrollable])
 
   // Add scroll event listener to show/hide slider
   useEffect(() => {
@@ -90,7 +94,7 @@ export default function Chatbot() {
       container.addEventListener("scroll", handleScroll)
       return () => container.removeEventListener("scroll", handleScroll)
     }
-  }, [])
+  }, [checkScrollable])
 
   // Focus input when chat opens
   useEffect(() => {
@@ -289,6 +293,10 @@ export default function Chatbot() {
     }
   }
 
+  if (!isAuthenticated) {
+    return null
+  }
+
   return (
     <>
       <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end space-y-3">
@@ -438,13 +446,14 @@ export default function Chatbot() {
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? 
-            <X className="h-4 w-4 text-white" /> : 
+          {isOpen ? (
+            <X className="h-4 w-4 text-white" />
+          ) : (
             <div className="flex items-center space-x-2">
               <Compass className="h-4 w-4 text-white" />
               <span className="text-white text-sm font-medium">Ask AI</span>
             </div>
-          }
+          )}
         </motion.button>
       </div>
     </>

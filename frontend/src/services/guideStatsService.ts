@@ -24,7 +24,6 @@ export interface GuideStats {
   activeTours: number;
   privateTours: number;
   completedTours: number;
-  reservations: number;
   totalRevenue: number;
   touristsCount: number;
   paymentsReceived: number;
@@ -38,7 +37,6 @@ const defaultStats: GuideStats = {
   activeTours: 0,
   privateTours: 0,
   completedTours: 0,
-  reservations: 0,
   totalRevenue: 0,
   touristsCount: 0,
   paymentsReceived: 0,

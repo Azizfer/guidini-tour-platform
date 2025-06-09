@@ -24,7 +24,7 @@ interface Guide {
   toursCount?: number
   completedToursCount?: number
   privateToursCount?: number
-  reservationsCount?: number
+  // reservationsCount?: number
   rating?: number
   reviewCount?: number
   totalRevenue?: number
@@ -48,12 +48,12 @@ export function DashboardStats({ guide }: ProfileStatsProps) {
     toursCount: guideStats.activeTours || 0,
     completedToursCount: guideStats.completedTours || 0,
     privateToursCount: guideStats.privateTours || 0,
-    reservationsCount: guideStats.reservations || 0,
+    // reservationsCount: guideStats.reservations || 0,
+    paymentsReceived: guideStats.paymentsReceived || 0,
     rating: guideStats.rating || 0,
     reviewCount: guideStats.reviewCount || 0,
     totalRevenue: guideStats.totalRevenue || 0,
     touristsCount: guideStats.touristsCount || 0,
-    paymentsReceived: guideStats.paymentsReceived || 0,
   }
 
   // State for recent activity data
@@ -241,8 +241,8 @@ export function DashboardStats({ guide }: ProfileStatsProps) {
           borderColor="border-emerald-200"
         />
         <StatCard
-          title="Réservations"
-          value={stats.reservationsCount.toString()}
+          title="Paiements Reçus"
+          value={stats.paymentsReceived.toString()}
           icon={<UsersIcon className="h-5 w-5" />}
           change="Total"
           color="text-purple-600"

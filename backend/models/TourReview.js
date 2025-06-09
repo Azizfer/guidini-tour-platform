@@ -22,6 +22,10 @@ const tourReviewSchema = new mongoose.Schema({
     min: 0,
     max: 5
   },
+  message: {
+    type: String,
+    maxlength: 500
+  },
   createdAt: {
     type: Date,
     default: Date.now

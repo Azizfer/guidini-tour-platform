@@ -42,7 +42,7 @@ router.get('/guides/:id', async (req, res) => {
 // Route pour récupérer le profil de l'utilisateur connecté
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id).select('+createdAt -password');
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -128,7 +128,7 @@ router.put('/guides/:id', async (req, res) => {
       req.params.id,
       { $set: updates },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select('+createdAt -password');
 
     if (!updatedGuide) {
       console.log('Guide non trouvé');

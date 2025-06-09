@@ -5,19 +5,15 @@ const User = require('../models/User');
 exports.getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log('[DEBUG] Fetching notifications for userId:', userId);
     
     // Find all notifications for this user, sorted by creation date (newest first)
     const notifications = await Notification.find({ recipient: userId })
       .sort({ createdAt: -1 })
       .limit(50); // Limit to prevent overwhelming response
-    
-    console.log('[DEBUG] Raw notifications from DB:', JSON.stringify(notifications, null, 2));
 
     // Format the notifications for the frontend
     const formattedNotifications = notifications.map(notification => {
       // Format the time as "Il y a X minutes/heures/jours" for frontend
-      console.log('[DEBUG] Processing notification ID:', notification._id, 'createdAt:', notification.createdAt);
       const timeAgo = formatTimeAgo(notification.createdAt);
       
       return {

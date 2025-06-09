@@ -1,81 +1,125 @@
 const TourReview = require('../models/TourReview');
 const Tour = require('../models/Tour');
 const User = require('../models/User');
+const GuideStats = require('../models/GuideStats');
+const Notification = require('../models/Notification');
 
-// Créer un nouvel avis sur un tour (simplifié pour ne contenir que des étoiles)
+// Create new tour review with all functionality
 exports.createTourReview = async (req, res) => {
   try {
-    const { tourId, rating } = req.body;
+    console.log('Request body:', req.body);
+    const { tourId, rating, message } = req.body;
     const userId = req.user._id;
 
-    // Vérifier si le tour existe et s'il est marqué comme complété
+    // Validate required fields
+    if (!tourId || !rating) {
+      console.error('Missing required fields');
+      return res.status(400).json({ message: 'Tour ID and rating are required' });
+    }
+
+    // Validate rating range
+    if (rating < 0 || rating > 5) {
+      console.error('Invalid rating value:', rating);
+      return res.status(400).json({ message: 'Rating must be between 0 and 5' });
+    }
+
+    // Check tour exists and is completed
     const tour = await Tour.findById(tourId);
     if (!tour) {
-      return res.status(404).json({ message: 'Tour non trouvé' });
+      console.error('Tour not found:', tourId);
+      return res.status(404).json({ message: 'Tour not found' });
+    }
+    
+    if (tour.tourStatus !== 'completed') {
+      console.error('Tour not completed:', tour.tourStatus);
+      return res.status(400).json({ message: 'Cannot review incomplete tours' });
     }
 
-    // Vérifier que le tour est marqué comme complété
-    if (!tour.isCompleted) {
-      return res.status(400).json({ 
-        message: 'Vous ne pouvez pas noter un tour qui n\'est pas encore complété' 
-      });
-    }
-
-    // Récupérer l'ID du guide
+    // Get guide ID
     const guideId = tour.guideId;
     if (!guideId) {
-      return res.status(400).json({ 
-        message: 'Impossible de trouver le guide associé à ce tour' 
-      });
+      console.error('No guide associated with tour:', tourId);
+      return res.status(400).json({ message: 'No guide associated with this tour' });
     }
 
-    // Vérifier si l'utilisateur a déjà laissé un avis sur ce tour
+    // Check for existing review
     const existingReview = await TourReview.findOne({ tourId, userId });
     if (existingReview) {
+      console.error('Duplicate review attempt:', { tourId, userId });
       return res.status(400).json({ 
-        message: 'Vous avez déjà laissé un avis sur ce tour' 
+        message: `You already reviewed this tour on ${existingReview.createdAt.toLocaleDateString()}`
       });
     }
 
-    // Créer le nouvel avis
-    const newReview = new TourReview({
-      tourId,
-      userId,
-      guideId,
-      rating
-    });
-
-    // Sauvegarder l'avis
+    // Create and save new review
+    console.log('Creating new review for tour:', tourId);
+    const newReview = new TourReview({ tourId, userId, guideId, rating, message });
     const savedReview = await newReview.save();
+    console.log('Review created:', savedReview._id);
 
-    // Mettre à jour la note moyenne et le nombre d'avis du tour
+    // Update tour statistics
     const allTourReviews = await TourReview.find({ tourId });
-    const totalTourRating = allTourReviews.reduce((sum, review) => sum + review.rating, 0);
-    const averageTourRating = totalTourRating / allTourReviews.length;
-
+    const averageTourRating = allTourReviews.reduce((sum, review) => sum + review.rating, 0) / allTourReviews.length;
+    
     tour.rating = averageTourRating;
     tour.reviewCount = allTourReviews.length;
     await tour.save();
+    console.log('Tour stats updated:', tourId);
 
-    // Mettre à jour la note moyenne du guide
+    // Update guide statistics
     const allGuideReviews = await TourReview.find({ guideId });
     const totalGuideRating = allGuideReviews.reduce((sum, review) => sum + review.rating, 0);
     const averageGuideRating = totalGuideRating / allGuideReviews.length;
 
-    // Mettre à jour les statistiques du guide
-    const guide = await User.findById(guideId);
-    if (guide && guide.stats) {
-      guide.stats.averageRating = averageGuideRating;
-      await guide.save();
+    // Update GuideStats collection using existing rating/reviewCount fields
+    await GuideStats.findOneAndUpdate(
+      { guideId },
+      {
+        $set: { rating: averageGuideRating, reviewCount: allGuideReviews.length }
+      },
+      { upsert: true, new: true }
+    );
+    console.log('GuideStats updated for guide:', guideId);
+
+    // Update User model for backward compatibility
+    await User.findByIdAndUpdate(guideId, {
+      $set: { 'stats.averageRating': averageGuideRating },
+      $inc: { 'stats.totalReviews': 1 }
+    });
+    console.log('User stats updated for guide:', guideId);
+
+    /* -------------------------------------------------------------
+       Create notification for the guide to inform about new review
+    --------------------------------------------------------------*/
+    try {
+      // Fetch reviewer info for personalized message
+      const reviewer = await User.findById(userId).select('name username profileImage');
+      const reviewerName = reviewer?.name || reviewer?.username || 'Un utilisateur';
+
+      // Build notification payload (only for guide)
+      await Notification.create({
+        recipient: guideId,
+        title: 'Nouvelle évaluation',
+        description: `${reviewerName} a laissé une note de ${rating} ⭐ sur votre visite "${tour.title}"`,
+        type: 'review',
+        tourId,
+        guideId,
+        userId,
+        avatar: reviewer?.profileImage || undefined,
+      });
+
+      console.log('Review notification sent to guide:', guideId);
+    } catch (notifErr) {
+      console.error('Failed to create review notification:', notifErr.message);
     }
 
     res.status(201).json({
-      success: true,
-      message: 'Note ajoutée avec succès',
+      message: 'Review submitted successfully',
       review: savedReview
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error creating review:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -118,7 +162,50 @@ exports.getTourReviews = async (req, res) => {
   }
 };
 
-// Note: La fonction addImageToReview a été supprimée car nous simplifions le système d'avis pour ne contenir que des étoiles
+// Get all reviews for a guide
+exports.getGuideReviews = async (req, res) => {
+  try {
+    const { guideId } = req.params;
+
+    // Validate guide exists
+    const guide = await User.findById(guideId);
+    if (!guide) {
+      return res.status(404).json({ message: 'Guide non trouvé' });
+    }
+
+    // Fetch reviews for all completed tours of this guide
+    const reviews = await TourReview.find({ guideId })
+      .populate('userId', 'name username profileImage')
+      .sort({ createdAt: -1 });
+
+    const simplifiedReviews = reviews.map((review) => ({
+      _id: review._id,
+      rating: review.rating,
+      message: review.message,
+      user: {
+        _id: review.userId._id,
+        name: review.userId.name,
+        username: review.userId.username,
+        profileImage: review.userId.profileImage,
+      },
+      createdAt: review.createdAt,
+    }));
+
+    // Calculate average rating and count
+    const averageRating =
+      reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : 0;
+
+    res.status(200).json({
+      averageRating,
+      reviewCount: reviews.length,
+      reviews: simplifiedReviews,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // Supprimer un avis
 exports.deleteTourReview = async (req, res) => {
@@ -177,6 +264,20 @@ exports.deleteTourReview = async (req, res) => {
       }
       await guide.save();
     }
+
+    // Update GuideStats as well
+    const newAverage =
+      allGuideReviews.length === 0
+        ? 0
+        : allGuideReviews.reduce((sum, r) => sum + r.rating, 0) / allGuideReviews.length;
+
+    await GuideStats.findOneAndUpdate(
+      { guideId },
+      {
+        $set: { rating: newAverage, reviewCount: allGuideReviews.length }
+      },
+      { upsert: true, new: true }
+    );
 
     res.status(200).json({
       success: true,

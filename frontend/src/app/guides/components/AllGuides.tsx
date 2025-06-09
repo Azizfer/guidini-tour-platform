@@ -26,7 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Label } from "@/components/ui/label"
 import guideService, { Guide } from "@/services/guideService"
 import { useChat } from "@/contexts/chat-context"
-
+import Link from "next/link"
 
 const sortOptions = [
   { label: "Meilleures notes", value: "rating" },
@@ -524,11 +524,14 @@ export default function AllGuides() {
                           Contacter
                           <Mail className="ml-2 h-4 w-4" />
                         </Button>
-                        <Button
+                        <Button 
                           variant="outline"
+                          asChild
                           className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-full text-xs py-1.5"
                         >
-                          Voir le profil
+                          <Link href={`/Profile/${guide._id}`}>
+                            Voir le profil
+                          </Link>
                         </Button>
                       </div>
                     </CardContent>

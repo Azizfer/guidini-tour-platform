@@ -84,7 +84,7 @@ exports.initializePayment = async (req, res) => {
     
     // Log complete request details for debugging
     console.log('Complete payment request payload:', JSON.stringify(paymentData, null, 2));
-    console.log('Complete API URL:', `${KONNECT_API_URL}/payments/init-payment`);
+    console.log('Complete API URL:', `${KONNECT_API_URL}/api/v2/payments/init-payment`);
     console.log('Complete headers:', {
       'x-api-key': KONNECT_API_KEY ? `${KONNECT_API_KEY.substring(0, 10)}...` : 'Missing',
       'Content-Type': 'application/json'
@@ -136,12 +136,40 @@ exports.initializePayment = async (req, res) => {
         // Log the complete response for debugging
         console.log('Complete Konnect API response:', JSON.stringify(response.data, null, 2));
         
+        // Extract payUrl and paymentRef safely (may come in headers for 3xx response)
+        let payUrl = response.data.payUrl || response.data.link || response.headers?.location || '';
+        let paymentRef = response.data.paymentRef || response.data.payment_reference || response.headers?.paymentref || response.headers?.paymentRef || '';
+        
+        // If still missing, attempt to parse paymentRef from redirect URL
+        if (!paymentRef && payUrl) {
+          try {
+            const urlObj = new URL(payUrl);
+            paymentRef = urlObj.searchParams.get('paymentRef') || urlObj.searchParams.get('payment_ref') || '';
+          } catch (e) {
+            console.error('Failed to parse paymentRef from payUrl:', e.message);
+          }
+        }
+        
+        // If we have paymentRef but no explicit payUrl, build one using checkout base
+        if (!payUrl && paymentRef) {
+          const BASE_CHECKOUT = process.env.KONNECT_CHECKOUT_URL || `${KONNECT_API_URL}/payments/checkout`;
+          payUrl = `${BASE_CHECKOUT}?paymentRef=${paymentRef}`;
+        }
+        
+        // Log extracted values
+        console.log('Parsed Konnect response -> payUrl:', payUrl, ' paymentRef:', paymentRef);
+        
         // If we get here, the request was successful
         console.log('Payment initialization successful. Response:', {
-          payUrl: response.data.payUrl,
-          paymentRef: response.data.paymentRef,
-          orderId: response.data.orderId
+          payUrl: payUrl,
+          paymentRef: paymentRef,
+          orderId: response.data.orderId || paymentData.orderId
         });
+        
+        // Attach extracted values to response for later steps
+        response.data.payUrl = payUrl;
+        response.data.paymentRef = paymentRef;
+        
         break;
       } catch (retryError) {
         retryCount++;
@@ -317,8 +345,8 @@ exports.initializePayment = async (req, res) => {
                   description: `Votre paiement de ${savedPayment.amount} TND pour la réservation a été confirmé.`,
                   type: "payment",
                   tourId: tourObjectId,
-                  read: false,
-                  createdAt: new Date()
+                  amount: savedPayment.amount,
+                  read: false
                 });
                 console.log('Notification pour touriste ajoutée à la liste');
               } else {
@@ -375,9 +403,9 @@ exports.initializePayment = async (req, res) => {
                       console.log('Guide notification already exists, skipping creation');
                     }
                     
-                    // Update the guide's reservation count in GuideStats
+                    // Update the guide's stats (payments and tourists)
                     try {
-                      console.log('Updating guide reservation count for guide:', guideId);
+                      console.log('Updating guide stats for guide:', guideId);
                       const GuideStats = require('../models/GuideStats');
                       
                       // Find or create stats document for this guide
@@ -388,8 +416,12 @@ exports.initializePayment = async (req, res) => {
                         stats = new GuideStats({ guideId: guideId });
                       }
                       
-                      // Increment reservations count
-                      stats.reservations += 1;
+                      // Increment paymentsReceived count
+                      stats.paymentsReceived += 1;
+                      
+                      // Increment tourists count based on participants
+                      const participantsNum = savedPayment.participants || 1;
+                      stats.touristsCount += participantsNum;
                       
                       // Also increment revenue if amount is available
                       if (savedPayment.amount) {
@@ -399,13 +431,12 @@ exports.initializePayment = async (req, res) => {
                       // Save the updated stats
                       await stats.save();
                       
-                      console.log(`Incremented reservations count for guide ${guideId} to ${stats.reservations}`);
+                      console.log(`Updated guide stats: paymentsReceived=${stats.paymentsReceived}, touristsCount=${stats.touristsCount}`);
                       
                       // Emit socket event if available
                       if (req.app.get('io')) {
                         const io = req.app.get('io');
-                        io.emit('reservationUpdate', { guideId: guideId.toString() });
-                        console.log('Emitted reservationUpdate event for guide:', guideId);
+                        io.emit('statsUpdate', { guideId: guideId.toString() });
                       }
                     } catch (statsError) {
                       console.error('Error updating guide stats:', statsError);
@@ -466,9 +497,9 @@ exports.initializePayment = async (req, res) => {
 
     // Return payment URL and reference
     res.json({
-      success: true,
-      payUrl: response.data.payUrl,
-      paymentRef: response.data.paymentRef,
+      success: !!response.data.payUrl && !!response.data.paymentRef,
+      payUrl: response.data.payUrl || '',
+      paymentRef: response.data.paymentRef || '',
       orderId: paymentData.orderId
     });
   } catch (error) {
@@ -844,43 +875,31 @@ exports.handleWebhook = async (req, res) => {
             guideId = tour.guideId;
             console.log('Found guideId from tour:', guideId);
             
-            // Increment the guide's reservation count in GuideStats
+            // Increment the guide's stats (payments and tourists)
             const GuideStats = require('../models/GuideStats');
             
-            try {
-              // Find or create stats document for this guide
-              let stats = await GuideStats.findOne({ guideId: guideId });
-              
-              if (!stats) {
-                // Create new stats document if it doesn't exist
-                stats = new GuideStats({ guideId: guideId });
-              }
-              
-              // Increment reservations count
-              stats.reservations += 1;
-              
-              // Also increment revenue if amount is available
-              if (payment.amount || (paymentRecord && paymentRecord.amount)) {
-                const amountToAdd = (payment.amount || paymentRecord.amount);
-                stats.totalRevenue += amountToAdd;
-              }
-              
-              // Save the updated stats
-              await stats.save();
-              
-              // Force a recalculation of all stats to ensure consistency
-              const { Reservation } = require('../models');
-              const reservations = await Reservation.countDocuments({ guideId: guideId });
-              
-              // Update the stats with the correct count from the Reservation collection
-              if (reservations > 0 && stats.reservations !== reservations) {
-                stats.reservations = reservations;
-                await stats.save();
-              }
-            } catch (statsError) {
-              console.error('Error updating guide stats:', statsError);
-              // Continue processing even if stats update fails
+            let stats = await GuideStats.findOne({ guideId: guideId });
+            
+            if (!stats) {
+              console.log('No stats found for guide, creating new stats document');
+              stats = new GuideStats({ guideId: guideId });
             }
+            
+            // Increment paymentsReceived count
+            stats.paymentsReceived += 1;
+            
+            // Increment touristsCount with participants from payment record (default 1)
+            const pNum = (paymentRecord && paymentRecord.participants) ? paymentRecord.participants : 1;
+            stats.touristsCount += pNum;
+            
+            // Also increment revenue if amount is available
+            if (payment.amount || (paymentRecord && paymentRecord.amount)) {
+              const amountToAdd = (payment.amount || paymentRecord.amount);
+              stats.totalRevenue += amountToAdd;
+            }
+            
+            // Save the updated stats
+            await stats.save();
             
             // Create a reservation record in the database
             try {

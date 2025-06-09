@@ -5,22 +5,10 @@
       "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   },
-  "app\\Activities\\components\\AllActivities.tsx -> @/services/guideService": {
-    "id": "app\\Activities\\components\\AllActivities.tsx -> @/services/guideService",
-    "files": []
-  },
-  "app\\Activities\\components\\AllActivities.tsx -> @/services/userService": {
-    "id": "app\\Activities\\components\\AllActivities.tsx -> @/services/userService",
-    "files": []
-  },
   "components\\chat-wrapper.tsx -> ./chat-interface": {
     "id": "components\\chat-wrapper.tsx -> ./chat-interface",
     "files": [
       "static/chunks/_app-pages-browser_src_components_chat-interface_tsx.js"
     ]
-  },
-  "services\\guideStatsService.ts -> ./toursService": {
-    "id": "services\\guideStatsService.ts -> ./toursService",
-    "files": []
   }
 }

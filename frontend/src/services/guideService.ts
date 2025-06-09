@@ -25,7 +25,6 @@ const DEFAULT_GUIDE_DATA = {
   rating: 4.8,
   reviewCount: 24,
   toursCount: 15,
-  reservationsCount: 32,
   touristsCount: 120,
   totalRevenue: 4500,
   paymentsReceived: 28,
@@ -50,7 +49,6 @@ export interface Guide {
   rating?: number;
   reviewCount?: number;
   toursCount?: number;
-  reservationsCount?: number;
   touristsCount?: number;
   totalRevenue?: number;
   paymentsReceived?: number;
@@ -62,6 +60,7 @@ export interface Guide {
     averageRating?: number;
     completedTours?: number;
     activeTours?: number;
+    paymentsReceived?: number;
   }
 }
 
@@ -115,7 +114,6 @@ const guideService = {
         rating: response.data.rating || 0,
         reviewCount: response.data.reviewCount || 0,
         toursCount: response.data.toursCount || 0,
-        reservationsCount: response.data.reservationsCount || 0,
         touristsCount: response.data.touristsCount || 0,
         totalRevenue: response.data.totalRevenue || 0,
         paymentsReceived: response.data.paymentsReceived || 0,

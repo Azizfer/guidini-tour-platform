@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Tour, getAllTours } from "@/services/toursService"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/app/LogingContext/AuthContext"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function PopularActivities() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -14,6 +16,8 @@ export default function PopularActivities() {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchActivities = async () => {
@@ -45,6 +49,30 @@ export default function PopularActivities() {
         behavior: "smooth",
       })
     }
+  }
+
+  const handleReserve = (activity: Tour) => {
+    // Not connected
+    if (!isAuthenticated) {
+      toast({
+        title: "Veuillez vous connecter",
+        description: "Vous devez être connecté pour réserver une activité.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Guide trying to reserve
+    if (user?.userType === "guide") {
+      toast({
+        title: "Action non autorisée",
+        description: "Le guide ne peut pas réserver une activité.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    router.push(`/Activities?activityId=${activity._id || activity.id}`)
   }
 
   return (
@@ -149,10 +177,7 @@ export default function PopularActivities() {
                         <span className="text-sm text-gray-600 ml-1">/Personne</span>
                       </div>
                       <Button
-                        onClick={() => {
-                          console.log('Clicking reserve with activity:', activity);
-                          router.push(`/Activities?activityId=${activity._id || activity.id}`);
-                        }}
+                        onClick={() => handleReserve(activity)}
                         className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full px-4 py-1 h-auto"
                       >
                         Réserver

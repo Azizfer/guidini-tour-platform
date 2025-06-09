@@ -13,6 +13,9 @@ router.post('/guides/:guideId/reservations', reservationController.createReserva
 // Routes for tourist reservations
 router.get('/tourist/reservations', reservationController.getTouristReservations);
 
+// Participation check must be before :reservationId route to avoid CastError
+router.get('/reservations/check-participation', reservationController.checkParticipation);
+
 // Routes for specific reservations
 router.get('/reservations/:reservationId', reservationController.getReservationById);
 router.patch('/reservations/:reservationId/status', reservationController.updateReservationStatus);

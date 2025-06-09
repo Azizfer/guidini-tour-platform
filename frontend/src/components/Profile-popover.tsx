@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Calendar, Settings, LogOut, LayoutDashboard } from "lucide-react"
+import { User, Calendar, LogOut, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLogoutConfirmation } from "./LogoutConfirmation"
 import { useAuth } from "@/app/LogingContext/AuthContext"
@@ -114,7 +114,7 @@ export default function ProfilePopover({ user: initialUser }: ProfilePopoverProp
     {
       icon: User,
       label: "Mon Profil",
-      href: "/profile",
+      href: userData.id ? `/Profile/${userData.id}` : "/login", // Fallback to login if ID is not available
       color: "blue",
     },
     {
@@ -132,7 +132,7 @@ export default function ProfilePopover({ user: initialUser }: ProfilePopoverProp
             color: "purple",
           },
         ]
-      : [])
+      : []),
   ]
 
   return (

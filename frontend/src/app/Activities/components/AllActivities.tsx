@@ -33,6 +33,7 @@ import ActivityDetailsPopup from "./activity-details-popup"
 import ParticipantCounter from "./participant-counter"
 import { useAuth } from "@/app/LogingContext/AuthContext"
 import { useSearchParams } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 
 // Define categories for filtering
 const categories = ["Toutes", "Histoire", "Culture", "Aventure", "Sport", "Gastronomie", "Visite"]
@@ -57,7 +58,8 @@ export default function AllActivities() {
   const [participants, setParticipants] = useState(1)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
   const searchParams = useSearchParams()
 
   // Fetch activities data from API
@@ -212,6 +214,25 @@ export default function AllActivities() {
   }
 
   const handleReserve = (id: string) => {
+    // auth / role checks
+    if (!isAuthenticated) {
+      toast({
+        title: "Veuillez vous connecter",
+        description: "Vous devez être connecté pour réserver une activité.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (user?.userType === "guide") {
+      toast({
+        title: "Action non autorisée",
+        description: "Le guide ne peut pas réserver une activité.",
+        variant: "destructive",
+      })
+      return
+    }
+
     console.log('Reserve button clicked for activity ID:', id)
     console.log('Activities data:', activities)
     
@@ -587,6 +608,7 @@ const ActivityCard = ({ activity, onReserve, onShowDetails }: {
   onShowDetails: (activity: Tour) => void;
  }) => {
   const { id, title, description, price, duration, maxParticipants, location, image } = activity;
+  const { user, isAuthenticated } = useAuth();
 
   // Function to handle the details button click
   const handleDetailsClick = (e: React.MouseEvent) => {
@@ -658,11 +680,10 @@ const ActivityCard = ({ activity, onReserve, onShowDetails }: {
           </div>
           <Button
             onClick={() => {
-              console.log('Clicking reserve with activity:', activity);
-              // Pass the full activity object instead of just the ID
-              onReserve(activity._id || activity.id || '');
+              onReserve(activity._id || activity.id || '')
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full px-4 py-1 h-auto"
+            disabled={!isAuthenticated || (user?.userType === 'guide')}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full px-4 py-1 h-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Réserver
           </Button>

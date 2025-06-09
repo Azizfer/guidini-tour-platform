@@ -1,23 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Tour = require('../models/Tour');
 
 // Initialize Gemini API with improved error handling
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  console.error('GEMINI_API_KEY is not set in environment variables');
+if (process.env.GEMINI_API_KEY) {
+  try {
+    console.log('Gemini API key is configured');
+    
+    // Create the Gemini client with error handling
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    console.log('Gemini client initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Gemini client:', error.message);
+    // Continue without Gemini functionality
+  }
 } else {
-  console.log('Gemini API key is configured');
-}
-
-// Create the Gemini client with error handling
-let genAI = null;
-try {
-  genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-  console.log('Gemini client initialized successfully');
-} catch (error) {
-  console.error('Failed to initialize Gemini client:', error.message);
+  console.warn('Gemini API key not configured - chat AI features disabled');
 }
 
 // Cache tours for 5 minutes to reduce database calls
@@ -49,7 +48,7 @@ const getAvailableTours = async () => {
       const spotsInfo = availableSpots > 0 ? `${availableSpots} places disponibles` : "Complet";
       
       toursInfo += `${index + 1}. "${tour.title}" - ${tour.location} - ${tour.duration}\n`;
-      toursInfo += `   📅 ${tour.date} à ${tour.time} - 💰 ${tour.price} TND - 🏷️ ${tour.category} - 👥 ${spotsInfo}\n`;
+      toursInfo += `   ${tour.date} à ${tour.time} - ${tour.price} TND - ${tour.category} - ${spotsInfo}\n`;
     });
 
     // Update cache
@@ -194,7 +193,7 @@ router.post('/', async (req, res) => {
     }
 
     // Check API availability
-    if (!genAI) {
+    if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({
         response: "Chat service is currently unavailable.",
         error: "SERVICE_DOWN"
@@ -202,6 +201,8 @@ router.post('/', async (req, res) => {
     }
 
     // Configure for Gemini 1.5 Flash (confirmed working with your API key)
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       generationConfig: {
