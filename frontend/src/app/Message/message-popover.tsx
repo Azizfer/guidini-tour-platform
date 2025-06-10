@@ -10,8 +10,8 @@ import messageService, { Conversation } from "@/services/messageService"
 import { User } from "@/services/userService"
 import axios from "axios"
 
-// Import custom scrollbar styles
-import "@/components/notifications/scrollbar.css"
+// Import custom scrollbar styles (consistent casing)
+import "@/components/Notifications/scrollbar.css"
 
 interface Message {
   id: string

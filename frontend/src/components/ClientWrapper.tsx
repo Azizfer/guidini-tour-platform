@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import PaymentVerification from "./payment-verification"
+import axios from 'axios';
+import { toast } from "@/components/ui/use-toast";
 
 // This component handles client-side only functionality
 export default function ClientWrapper() {
@@ -40,6 +42,27 @@ export default function ClientWrapper() {
       }
     }
   }, [theme, setTheme])
+
+  // Global Axios interceptor for handling 404 errors
+  useEffect(() => {
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 404) {
+          // Silently handle 404 errors without showing a toast
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('404 - Resource not found:', error.config?.url);
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor)
+    }
+  }, [])
 
   if (!mounted) {
     return null

@@ -1,6 +1,7 @@
 const GuideStats = require('../models/GuideStats');
 const Tour = require('../models/Tour');
 const Rating = require('../models/Rating');
+const Payment = require('../models/Payment');
 
 /**
  * Get statistics for a specific guide
@@ -118,10 +119,17 @@ exports.recalculateAllStats = async (req, res) => {
       return sum + (price * bookings);
     }, 0);
     
-    // Count total tourists
-    const touristsCount = tours.reduce((sum, tour) => {
-      return sum + (tour.participants ? tour.participants.length : 0);
+    // Fetch all completed payments related to this guide's tours
+    const tourIds = tours.map(t => t._id);
+    const payments = await Payment.find({ tourId: { $in: tourIds }, status: 'completed' });
+    
+    // Count tourists based on participants in payments
+    const touristsCount = payments.reduce((sum, payment) => {
+      return sum + (payment.participants || 1);
     }, 0);
+
+    // Count payments received
+    const paymentsReceived = payments.length;
     
     // Calculate average rating
     const ratings = await Rating.find({ guideId });
@@ -140,6 +148,7 @@ exports.recalculateAllStats = async (req, res) => {
         completedTours,
         totalRevenue,
         touristsCount,
+        paymentsReceived,
         rating,
         reviewCount: ratings.length,
         lastUpdated: new Date()

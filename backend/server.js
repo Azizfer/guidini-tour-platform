@@ -18,6 +18,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const ratingRoutes = require('./routes/ratings');
 const guideRoutes = require('./routes/guides');
 const guideStatsRoutes = require('./routes/guideStatsRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const testRoutes = require('./routes/test'); // Added test routes
 const profileRoutes = require('./routes/profile'); // Add profile routes
@@ -50,9 +51,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Servir les fichiers statiques depuis le dossier uploads
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Static uploads removed — all assets now served from Cloudinary
 
 // Middleware de traitement des requêtes
 app.use((req, res, next) => {
@@ -133,6 +132,7 @@ app.use('/api/guides', guideRoutes);
 app.use('/api/guides', guideToursRoutes);
 app.use('/api', guideStatsRoutes);
 app.use('/api', reservationRoutes); // Add reservation routes
+app.use('/api/groups', groupRoutes); // Add group routes
 app.use('/api/profiles', profileRoutes); // Add profile routes
 
 // Configure Socket.IO

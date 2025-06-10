@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const profileController = require('../controllers/profileController');
 const auth = require('../middleware/auth');
-const upload = require('../config/multer');
+const upload = require('../config/multer'); // now Cloudinary-based
 
 // Get user profile
 router.get('/:userId', auth, profileController.getUserProfile);

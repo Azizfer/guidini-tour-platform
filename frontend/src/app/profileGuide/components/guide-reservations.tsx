@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, MapPinIcon, UserIcon } from "@heroicons/react/24/outline"
+import { CalendarIcon, MapPinIcon, UserIcon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/app/LogingContext/AuthContext"
 
@@ -284,6 +284,14 @@ function ReservationCard({ reservation, onViewDetails }: ReservationCardProps) {
           <div className="flex items-center gap-2 text-gray-700">
             <UserIcon className="h-4 w-4 text-gray-400" />
             <span className="text-sm">{reservation.touristName}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <EnvelopeIcon className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{reservation.touristEmail}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <PhoneIcon className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{reservation.touristPhone}</span>
           </div>
           <div className="flex items-center gap-2 text-gray-700">
             <MapPinIcon className="h-4 w-4 text-gray-400" />

@@ -1,4 +1,5 @@
 const Tour = require('../models/Tour');
+const cloudinary = require('../config/cloudinary');
 
 // Récupérer tous les tours
 exports.getAllTours = async (req, res) => {
@@ -59,9 +60,23 @@ exports.createTour = async (req, res) => {
       return res.status(400).json({ message: 'Veuillez fournir toutes les informations requises' });
     }
     
+    let imageUrl = req.body.image;
+    if (req.file) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'guidini/Tours',
+        });
+        imageUrl = uploadRes.secure_url;
+      } catch (err) {
+        console.error('❌ Cloudinary upload failed:', err.message);
+        return res.status(500).json({ message: 'Échec du téléchargement de l\'image' });
+      }
+    }
+    
     const newTour = new Tour({
       ...req.body,
-      guideId: req.user._id // Assurez-vous que l'ID du guide est ajouté depuis l'authentification
+      guideId: req.user._id,
+      image: imageUrl,
     });
     
     const savedTour = await newTour.save();
@@ -89,9 +104,22 @@ exports.updateTour = async (req, res) => {
       });
     }
     
+    const updates = { ...req.body };
+    if (req.file) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'guidini/Tours',
+        });
+        updates.image = uploadRes.secure_url;
+      } catch (err) {
+        console.error('❌ Cloudinary upload failed:', err.message);
+        return res.status(500).json({ message: 'Échec du téléchargement de l\'image' });
+      }
+    }
+    
     const updatedTour = await Tour.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { new: true, runValidators: true }
     );
     

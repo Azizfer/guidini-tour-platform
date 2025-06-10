@@ -241,8 +241,8 @@ export function DashboardStats({ guide }: ProfileStatsProps) {
           borderColor="border-emerald-200"
         />
         <StatCard
-          title="Paiements Reçus"
-          value={stats.paymentsReceived.toString()}
+          title="Touristes guidés"
+          value={stats.touristsCount.toString()}
           icon={<UsersIcon className="h-5 w-5" />}
           change="Total"
           color="text-purple-600"

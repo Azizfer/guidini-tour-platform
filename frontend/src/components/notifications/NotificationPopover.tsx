@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, Calendar, Clock, FileText, MessageSquare, Star, Tag, AlertCircle, CreditCard, CheckCircle } from "lucide-react"
+import { Bell, Calendar, Clock, FileText, MessageSquare, Star, Tag, AlertCircle, CreditCard, CheckCircle, Users } from "lucide-react"
 import { motion } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/app/LogingContext/AuthContext"
@@ -143,6 +143,8 @@ export default function NotificationPopover({ onMarkAsRead }: { onMarkAsRead?: (
         return <CreditCard className="h-5 w-5 text-emerald-600" />;
       case 'review':
         return <Star className="h-5 w-5 text-amber-500" />;
+      case 'group_invite':
+        return <Users className="h-5 w-5 text-amber-600" />;
       case 'system':
         return <CheckCircle className="h-5 w-5 text-sky-600" />;
       default:
@@ -151,6 +153,18 @@ export default function NotificationPopover({ onMarkAsRead }: { onMarkAsRead?: (
   };
 
   // Use the time string directly since it's already formatted in the service
+
+  const handleInvite = async (notif: Notification, accept: boolean) => {
+    if (!notif || !notif.tourId) return; // Using tourId field to carry groupId in metadata
+    try {
+      const success = await (await import("@/services/groupService")).default.respondInvite(notif.tourId, accept);
+      if (success) {
+        markAsRead(notif.id);
+      }
+    } catch (err) {
+      console.error('Error responding to invite', err);
+    }
+  };
 
   if (!isAuthenticated || !user) {
     return null;
@@ -244,6 +258,28 @@ export default function NotificationPopover({ onMarkAsRead }: { onMarkAsRead?: (
                       <p className={`text-xs line-clamp-2 ${!notification.read ? "text-gray-800" : "text-gray-600"}`}>
                         {notification.description}
                       </p>
+                      {notification.type === 'group_invite' && !notification.read && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            className="text-xs px-2 py-1 rounded bg-emerald-500 text-white hover:bg-emerald-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInvite(notification, true);
+                            }}
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInvite(notification, false);
+                            }}
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>

@@ -11,8 +11,8 @@ router.get('/:id', tourController.getTourById);
 
 // Routes protégées (nécessitant une authentification)
 router.get('/guide/:guideId', auth, tourController.getToursByGuide);
-router.post('/', auth, tourController.createTour);
-router.put('/:id', auth, tourController.updateTour);
+router.post('/', auth, require('../config/multer').single('image'), tourController.createTour);
+router.put('/:id', auth, require('../config/multer').single('image'), tourController.updateTour);
 router.delete('/:id', auth, tourController.deleteTour);
 router.patch('/:id/toggle-visibility', auth, tourController.toggleTourVisibility);
 router.patch('/:id/mark-completed', auth, tourController.markTourAsCompleted);

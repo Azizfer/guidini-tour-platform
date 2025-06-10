@@ -5,6 +5,12 @@
       "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   },
+  "components\\Notifications\\NotificationPopover.tsx -> @/services/groupService": {
+    "id": "components\\Notifications\\NotificationPopover.tsx -> @/services/groupService",
+    "files": [
+      "static/chunks/_app-pages-browser_src_services_groupService_ts.js"
+    ]
+  },
   "components\\chat-wrapper.tsx -> ./chat-interface": {
     "id": "components\\chat-wrapper.tsx -> ./chat-interface",
     "files": [

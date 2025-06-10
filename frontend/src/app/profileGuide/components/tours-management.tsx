@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
 import TourList from "./tour-list"
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 
 interface TourFormData {
   title: string
@@ -42,7 +44,7 @@ interface TourFormData {
   maxParticipants: number
   date: string
   time: string
-  category: string
+  categories: string[]
   isPublic: boolean
   image?: string
   imageFile?: File
@@ -57,12 +59,12 @@ const initialFormData: TourFormData = {
   maxParticipants: 1,
   date: "",
   time: "",
-  category: "Histoire",
+  categories: [],
   isPublic: true,
   image: "",
 }
 
-const categories = ["Histoire", "Culture", "Aventure", "Gastronomie", "Nature"]
+const CATEGORY_OPTIONS = ["Histoire", "Culture", "Aventure", "Gastronomie", "Nature"]
 
 export default function ToursManagement() {
   const { user } = useAuth()
@@ -212,7 +214,7 @@ export default function ToursManagement() {
     if (formData.maxParticipants < 1) errors.maxParticipants = "Le nombre de participants doit être au moins 1"
     if (!formData.date.trim()) errors.date = "La date est requise"
     if (!formData.time.trim()) errors.time = "L'heure est requise"
-    if (!formData.category) errors.category = "La catégorie est requise"
+    if (formData.categories.length === 0) errors.categories = "Sélectionnez au moins une catégorie"
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -233,15 +235,15 @@ export default function ToursManagement() {
         return
       }
 
+      const { categories, ...rest } = formData
       const tourData = {
-        ...formData,
+        ...rest,
+        category: categories, // API expects `category`
         guideId,
         tourStatus: (formData.isPublic ? "active" : "private") as TourStatus,
       }
 
-      if (tourData.imageFile) {
-        delete tourData.imageFile
-      }
+      // Ne pas supprimer imageFile, il sera pris en charge par toursService pour l'upload multipart
 
       const newTour = await createTour(tourData)
 
@@ -292,6 +294,10 @@ export default function ToursManagement() {
   // Handle tour deletion
   const handleDeleteTour = async (id: string) => {
     try {
+      // Find the current tour to get its previous status before deletion
+      const currentTour = tours.find((tour) => tour.id === id || tour._id === id)
+      const oldStatus = currentTour?.tourStatus as TourStatus | undefined
+
       const success = await deleteTour(id)
 
       if (success) {
@@ -307,6 +313,19 @@ export default function ToursManagement() {
             return tourId !== id
           }),
         )
+
+        // Update guide stats if we had the previous status
+        const guideId = user?.id || localStorage.getItem("userId") || ""
+        if (oldStatus) {
+          await updateTourStatusStats(guideId, oldStatus, "deleted")
+        } else {
+          // If old status not found, still trigger stats refresh on backend with null
+          await updateTourStatusStats(guideId, null, "deleted")
+        }
+
+        // Trigger dashboard refresh so stats components update
+        const refreshEvent = new Event("refreshDashboard")
+        window.dispatchEvent(refreshEvent)
       } else {
         toast({
           title: "Erreur",
@@ -536,25 +555,40 @@ export default function ToursManagement() {
                   {formErrors.maxParticipants && <p className="text-xs text-red-500">{formErrors.maxParticipants}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-sm font-medium text-gray-700">
-                    Catégorie
-                  </Label>
-                  <Select value={formData.category} onValueChange={(value) => handleSelectChange(value, "category")}>
-                    <SelectTrigger
-                      id="category"
-                      className="h-9 text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    >
-                      <SelectValue placeholder="Sélectionnez" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category} className="text-sm">
-                          {category}
-                        </SelectItem>
+                  <Label className="text-sm font-medium text-gray-700">Catégories</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full justify-between text-sm rounded-lg border-gray-300">
+                        {formData.categories.length > 0 ? formData.categories.join(", ") : "Sélectionnez"}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-48">
+                      {CATEGORY_OPTIONS.map((cat) => (
+                        <DropdownMenuCheckboxItem
+                          key={cat}
+                          checked={formData.categories.includes(cat)}
+                          onCheckedChange={(checked) => {
+                            const newCats = checked
+                              ? [...formData.categories, cat]
+                              : formData.categories.filter((c) => c !== cat)
+                            setFormData((prev) => ({ ...prev, categories: newCats }))
+                            if (formErrors.categories) {
+                              setFormErrors((prev) => {
+                                const newErr = { ...prev }
+                                delete newErr.categories
+                                return newErr
+                              })
+                            }
+                          }}
+                          className="text-sm"
+                        >
+                          {cat}
+                        </DropdownMenuCheckboxItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.category && <p className="text-xs text-red-500">{formErrors.category}</p>}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {formErrors.categories && <p className="text-xs text-red-500">{formErrors.categories}</p>}
                 </div>
               </div>
 

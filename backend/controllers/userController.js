@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Tour = require('../models/Tour');
 const fs = require('fs');
 const path = require('path');
+const upload = require('../config/multer');
+const cloudinary = require('../config/cloudinary');
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -65,15 +67,8 @@ exports.updateUser = async (req, res) => {
     
     // Handle profile image upload if any
     if (req.file) {
-      // Delete old profile image if exists
-      if (user.profileImage && user.profileImage !== '/uploads/default-profile.jpg') {
-        const oldImagePath = path.join(__dirname, '..', user.profileImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-      
-      user.profileImage = `/uploads/${req.file.filename}`;
+      // Replace old image URL with the newly uploaded Cloudinary URL
+      user.profileImage = req.file.path; // CloudinaryStorage sets secure_url in .path
     }
     
     // Save updated user
@@ -105,13 +100,7 @@ exports.deleteUser = async (req, res) => {
       return res.status(403).json({ message: 'Non autorisé à supprimer ce profil' });
     }
     
-    // Delete user's profile image if exists
-    if (user.profileImage && user.profileImage !== '/uploads/default-profile.jpg') {
-      const imagePath = path.join(__dirname, '..', user.profileImage);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
-    }
+    // No local file deletion needed; images are on Cloudinary
     
     // If user is a guide, delete all their tours
     if (user.userType === 'guide') {

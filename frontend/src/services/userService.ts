@@ -193,3 +193,30 @@ export const getCachedUserById = async (userId: string): Promise<User | null> =>
     return null;
   }
 };
+
+// Search users by name or email
+export const searchUsers = async (query: string): Promise<User[]> => {
+  if (!query.trim()) return [];
+  try {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    const response = await axios.get<User[]>(`${API_BASE}/api/users/search`, {
+      params: { query },
+      headers: {
+        // Token is optional for public search, add if exists
+        Authorization: localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : undefined,
+      },
+      timeout: 10000,
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error('searchUsers error:', error);
+    return [];
+  }
+};
+
+// Export default object for convenience
+export default {
+  getUserById,
+  getCachedUserById,
+  searchUsers,
+};

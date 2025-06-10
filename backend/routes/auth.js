@@ -2,27 +2,20 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 const User = require('../models/User');
 const Preference = require('../models/Preference');
 const { sendVerificationEmail, sendPasswordResetEmail, verifyOTP } = require('../utils/emailService');
 
-// Configuration de multer pour le stockage des fichiers
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads'));
+// Configuration de Cloudinary pour le stockage des fichiers
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'guidini',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
 });
-
-// Créer le dossier uploads s'il n'existe pas
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // Configuration de multer avec les types de fichiers acceptés
 const fileFilter = (req, file, cb) => {
@@ -417,19 +410,19 @@ router.post('/register', uploadFields, async (req, res) => {
     // Ajouter les chemins des fichiers téléchargés
     if (req.files) {
       if (req.files.profileImage && req.files.profileImage[0]) {
-        userData.profileImage = '/uploads/' + req.files.profileImage[0].filename;
+        userData.profileImage = req.files.profileImage[0].path;
       }
       
       if (req.files.idCard && req.files.idCard[0]) {
-        userData.idCard = '/uploads/' + req.files.idCard[0].filename;
+        userData.idCard = req.files.idCard[0].path;
       }
       
       if (req.files.certificate && req.files.certificate[0]) {
-        userData.certificate = '/uploads/' + req.files.certificate[0].filename;
+        userData.certificate = req.files.certificate[0].path;
       }
       
       if (req.files.documents) {
-        userData.documents = req.files.documents.map(doc => '/uploads/' + doc.filename);
+        userData.documents = req.files.documents.map(doc => doc.path);
       }
     }
     

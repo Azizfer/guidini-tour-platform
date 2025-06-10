@@ -91,7 +91,7 @@ exports.uploadAvatar = async (req, res) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
-      { avatar: `/uploads/${req.file.filename}` },
+      { avatar: req.file.path }, // Cloudinary URL
       { new: true }
     ).select('-password -__v');
 

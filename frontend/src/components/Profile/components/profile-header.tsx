@@ -41,6 +41,7 @@ interface UserProfile {
     rating: number;
     reviewCount: number;
   };
+  profileImage?: string;
 }
 
 interface GuideStatsResponse {
@@ -99,7 +100,7 @@ export default function ProfileHeader({ profile, isOwnProfile, isFollowing, onFo
             <div className="flex items-center gap-3">
               {/* Avatar */}
               <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-2 ring-blue-100">
-                <AvatarImage src={profile.avatar || "/placeholder.svg"} alt={profile.name} />
+                <AvatarImage src={profile.avatar || profile.profileImage || "/placeholder.svg"} alt={profile.name} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-lg font-bold">
                   {profile.name.substring(0, 2)}
                 </AvatarFallback>

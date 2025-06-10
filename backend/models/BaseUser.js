@@ -48,7 +48,7 @@ const baseUserSchema = new mongoose.Schema({
   },
   profileImage: {
     type: String,
-    default: '/placeholder.svg?height=200&width=200'
+    default: '' // empty string means no image yet; frontend will fallback
   },
   createdAt: {
     type: Date,

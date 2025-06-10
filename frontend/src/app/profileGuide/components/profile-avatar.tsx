@@ -35,6 +35,7 @@ import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid"
 import guideService from "@/services/guideService"
 import preferenceService from "@/services/preferenceService"
 import { Check, Upload } from "lucide-react"
+import { getGuideStats } from "@/services/guideStatsService"
 
 // Modifier l'interface Guide
 interface Guide {
@@ -42,6 +43,7 @@ interface Guide {
   name: string
   email: string
   avatar?: string
+  profileImage?: string // Cloudinary URL
   location?: string
   bio?: string
   rating?: number
@@ -82,6 +84,10 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
     experience: guide.experience || 0,
   })
 
+  // New local state for rating & reviews so that we can update them after fetching
+  const [rating, setRating] = useState<number>(guide.rating || 0)
+  const [reviewCount, setReviewCount] = useState<number>(guide.reviewCount || 0)
+
   // Separate state for languages and expertise as arrays
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(guide.languages || [])
   const [selectedExpertise, setSelectedExpertise] = useState<string[]>(guide.expertise || [])
@@ -106,6 +112,20 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
           experience: guideData.yearsOfExperience || guideData.experience || 0,
         })
 
+        // Fetch statistics (rating & review count) separately to ensure accurate data
+        try {
+          const stats = await getGuideStats(guide._id)
+          if (typeof stats.rating === "number") {
+            setRating(stats.rating)
+          }
+          if (typeof stats.reviewCount === "number") {
+            setReviewCount(stats.reviewCount)
+          }
+        } catch (statsError) {
+          /* eslint-disable-next-line no-console */
+          console.error("Erreur lors de la récupération des statistiques du guide:", statsError)
+        }
+
         if (guideData.languages && guideData.languages.length > 0) {
           setSelectedLanguages(guideData.languages)
         } else if (preferences?.languages && preferences.languages.length > 0) {
@@ -116,6 +136,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
           setSelectedExpertise(guideData.expertise)
         }
       } catch (error) {
+        /* eslint-disable-next-line no-console */
         console.error("Erreur lors de la récupération des données du guide:", error)
         toast({
           title: "Erreur",
@@ -128,7 +149,8 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
     }
 
     fetchGuideData()
-  }, [guide._id, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Vérifier s'il faut afficher le toast après un rafraîchissement
   useEffect(() => {
@@ -195,6 +217,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
 
         if (!response.ok) {
           const errorText = await response.text()
+          /* eslint-disable-next-line no-console */
           console.error("Upload failed with status:", response.status, errorText)
           toast({
             title: "Erreur",
@@ -205,6 +228,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
         }
 
         const data = await response.json()
+        /* eslint-disable-next-line no-console */
         console.log("Profile image upload successful:", data)
 
         toast({
@@ -219,6 +243,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
           window.location.reload()
         }, 1000)
       } catch (fetchError) {
+        /* eslint-disable-next-line no-console */
         console.error("Fetch error:", fetchError)
         toast({
           title: "Erreur de connexion",
@@ -227,6 +252,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
         })
       }
     } catch (error) {
+      /* eslint-disable-next-line no-console */
       console.error("Erreur lors du téléchargement de l'image:", error)
       toast({
         title: "Erreur",
@@ -262,6 +288,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
         })
 
         if (!response.ok) {
+          /* eslint-disable-next-line no-console */
           console.error(`HTTP error! status: ${response.status}`)
           toast({
             title: "Erreur",
@@ -297,12 +324,14 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
             )
           }
         } catch (storageError) {
+          /* eslint-disable-next-line no-console */
           console.error("Error updating user data in localStorage:", storageError)
         }
 
         sessionStorage.setItem("showProfileToast", "true")
         window.location.reload()
       } catch (error) {
+        /* eslint-disable-next-line no-console */
         console.error("Erreur lors de la mise à jour du guide:", error)
         toast({
           title: "Erreur",
@@ -313,6 +342,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
         setIsLoading(false)
       }
     } catch (error) {
+      /* eslint-disable-next-line no-console */
       console.error("Erreur lors de la mise à jour du profil:", error)
       toast({
         title: "Erreur",
@@ -334,7 +364,11 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
         >
           <div className="relative">
             <Avatar className="h-16 w-16 bg-gradient-to-br from-blue-500 to-blue-600 border-2 border-white shadow-lg mb-3 group-hover:shadow-xl transition-shadow">
-              <AvatarImage src={guide.avatar || "/placeholder.svg"} alt={guide.name} />
+              <AvatarImage
+                src={previewUrl || guide.avatar || guide.profileImage || "/placeholder.svg"}
+                alt={guide.name}
+                className="object-cover"
+              />
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
                 {guide.name.substring(0, 2)}
               </AvatarFallback>
@@ -354,7 +388,11 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
               <div className="flex items-start gap-4">
                 <div className="relative">
                   <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                    <AvatarImage src={guide.avatar || "/placeholder.svg"} alt={guide.name} />
+                    <AvatarImage
+                      src={previewUrl || guide.avatar || guide.profileImage || "/placeholder.svg"}
+                      alt={guide.name}
+                      className="object-cover"
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
                       {guide.name.substring(0, 2)}
                     </AvatarFallback>
@@ -395,7 +433,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
                           <div className="relative mb-4">
                             <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
                               <AvatarImage
-                                src={previewUrl || guide.avatar || "/placeholder.svg"}
+                                src={previewUrl || guide.avatar || guide.profileImage || "/placeholder.svg"}
                                 alt={guide.name}
                                 className="object-cover"
                               />
@@ -608,7 +646,7 @@ export function ProfileAvatar({ guide }: ProfileAvatarProps) {
                   <div className="flex items-center mt-2 gap-1">
                     <StarIconSolid className="h-4 w-4 text-amber-500" />
                     <span className="text-sm text-gray-700 font-medium">
-                      {guide.rating} ({guide.reviewCount} avis)
+                      {rating.toFixed(1)} ({reviewCount} avis)
                     </span>
                   </div>
                 </div>

@@ -294,7 +294,7 @@ export default function ProfileDashboard() {
                 className="flex items-center gap-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50"
               >
                 <UsersIcon className="h-5 w-5" />
-                <span>Paiements</span>
+                <span>Reservations</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
 

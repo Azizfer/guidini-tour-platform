@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import ProfilePopover from "./profile-popover"
 import MessagePopover from "@/app/Message/message-popover"
 import { useChat } from "@/contexts/chat-context"
-import NotificationPopover from "./notifications/NotificationPopover"
+import NotificationPopover from "./Notifications/NotificationPopover"
 
 // Guidini Logo Component
 function GuidiniLogo({ className = "" }: { className?: string }) {
@@ -36,7 +36,9 @@ export default function IntegratedHeader() {
     name: "Utilisateur",
     email: "user@example.com",
     username: "",
-    userType: "tourist"
+    userType: "tourist",
+    avatar: "",
+    profileImage: ""
   })
 
   useEffect(() => {
@@ -48,33 +50,49 @@ export default function IntegratedHeader() {
     const checkAuthStatus = () => {
       const token = localStorage.getItem("token")
       setIsAuthenticated(!!token)
-      
-      // Fetch user data if authenticated
+
       if (token) {
-        // This is a placeholder - in a real app, you would fetch user data from an API
-        // For now, we'll use dummy data
-        setUserData({
-          id: "user123",
-          name: "Utilisateur",
-          email: "user@example.com",
-          username: "user123",
-          userType: "tourist"
-        })
-      } else {
-        // Reset user data when not authenticated
-        setUserData({
-          id: "",
-          name: "Utilisateur",
-          email: "user@example.com",
-          username: "",
-          userType: "tourist"
-        })
+        try {
+          const storedUser = localStorage.getItem("user")
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser)
+            setUserData({
+              id: parsedUser.id || parsedUser._id || "",
+              name: parsedUser.name || parsedUser.username || "Utilisateur",
+              email: parsedUser.email || "user@example.com",
+              username: parsedUser.username || "",
+              userType: parsedUser.userType || "tourist",
+              avatar: parsedUser.avatar || "",
+              profileImage: parsedUser.profileImage || parsedUser.avatar || ""
+            })
+            return
+          }
+        } catch (err) {
+          console.error("Failed to parse stored user:", err)
+        }
       }
+
+      // Fallback (not authenticated or no stored user)
+      setUserData({
+        id: "",
+        name: "Utilisateur",
+        email: "user@example.com",
+        username: "",
+        userType: "tourist",
+        avatar: "",
+        profileImage: ""
+      })
     }
-    
+
     // Initial check
     checkAuthStatus()
-    
+
+    // Listen for auth state changes (login/register)
+    const handleAuthChange = () => {
+      console.log("authStateChanged event detected in Header")
+      checkAuthStatus()
+    }
+
     // Listen for logout events
     const handleLogout = () => {
       console.log("Logout event detected in Header")
@@ -83,10 +101,12 @@ export default function IntegratedHeader() {
     }
     
     window.addEventListener("userLoggedOut", handleLogout)
+    window.addEventListener("authStateChanged", handleAuthChange)
 
     return () => {
       window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("userLoggedOut", handleLogout)
+      window.removeEventListener("authStateChanged", handleAuthChange)
     }
   }, [])
 
@@ -262,7 +282,19 @@ export default function IntegratedHeader() {
                     size="sm"
                     className="flex items-center justify-center h-8 w-8 rounded-full bg-amber-400/20 hover:bg-amber-400/30 transition-colors overflow-hidden border border-amber-400/50"
                   >
-                    <User className="h-4 w-4 text-amber-300" />
+                    {userData.profileImage || (userData.avatar && userData.avatar.trim() !== "") ? (
+                      <img
+                        src={userData.profileImage || userData.avatar || "/placeholder.svg"}
+                        alt="Profile"
+                        className="h-full w-full object-cover rounded-full"
+                        onError={(e) => {
+                          // @ts-ignore
+                          e.target.src = "/placeholder.svg";
+                        }}
+                      />
+                    ) : (
+                      <User className="h-4 w-4 text-amber-300" />
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-auto border-0 bg-transparent shadow-none" align="end">

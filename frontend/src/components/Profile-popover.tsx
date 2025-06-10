@@ -150,7 +150,7 @@ export default function ProfilePopover({ user: initialUser }: ProfilePopoverProp
             <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-white shadow-md">
               {userData?.avatar && userData.avatar.trim() !== "" ? (
                 <img
-                  src={userData.avatar || "/placeholder.svg"}
+                  src={userData.avatar || userData.profileImage || "/placeholder.svg"}
                   alt={userData.name}
                   className="h-full w-full object-cover"
                   onError={(e) => {

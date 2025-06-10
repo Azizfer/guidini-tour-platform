@@ -159,8 +159,8 @@ export const getToursByGuide = async (guideId: string): Promise<Tour[]> => {
   }
 };
 
-// Créer un nouveau tour
-export const createTour = async (tourData: Omit<Tour, 'id' | '_id'>): Promise<Tour | null> => {
+// Créer un nouveau tour (gère également l'upload d'image)
+export const createTour = async (tourData: Omit<Tour, 'id' | '_id'> & { imageFile?: File }): Promise<Tour | null> => {
   try {
     // Vérifier si le token est présent
     const token = localStorage.getItem('token');
@@ -176,18 +176,40 @@ export const createTour = async (tourData: Omit<Tour, 'id' | '_id'>): Promise<To
       guideId: tourData.guideId || userId
     };
     
-    console.log('Envoi de données au serveur:', {
-      url: API_URL,
-      data: tourWithGuideId,
-      token: token ? 'Présent' : 'Absent'
-    });
+    let response;
     
-    const response = await axios.post<Tour>(API_URL, tourWithGuideId, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    // Si une imageFile est présente, utiliser FormData pour l'upload multipart
+    if (tourData.imageFile) {
+      const formData = new FormData();
+      // Append fields
+      Object.entries(tourWithGuideId).forEach(([key, value]) => {
+        if (key === 'imageFile') {
+          formData.append('image', value as File); // champ attendu côté backend
+        } else {
+          // Éviter d'envoyer le champ texte 'image' lorsque l'imageFile est présent pour éviter un double champ
+          if (key !== 'image' && value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        }
+      });
+      
+      console.log('Envoi multipart/form-data (createTour)');
+      
+      response = await axios.post<Tour>(API_URL, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // NE PAS définir Content-Type pour laisser axios définir le boundary
+        }
+      });
+    } else {
+      // Sinon, envoyer en JSON classique
+      response = await axios.post<Tour>(API_URL, tourWithGuideId, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    }
     
     console.log('Tour créé avec succès:', response.data);
     return response.data;
@@ -197,18 +219,39 @@ export const createTour = async (tourData: Omit<Tour, 'id' | '_id'>): Promise<To
   }
 };
 
-// Mettre à jour un tour
-export const updateTour = async (id: string, tourData: Partial<Tour>): Promise<Tour | null> => {
+// Mettre à jour un tour (supporte également l'upload d'image)
+export const updateTour = async (id: string, tourData: Partial<Tour> & { imageFile?: File }): Promise<Tour | null> => {
   try {
     const token = localStorage.getItem('token');
     if (!token) return null;
     
-    const response = await axios.put<Tour>(`${API_URL}/${id}`, tourData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    let response;
+    
+    if (tourData.imageFile) {
+      const formData = new FormData();
+      Object.entries(tourData).forEach(([key, value]) => {
+        if (key === 'imageFile') {
+          formData.append('image', value as File);
+        } else {
+          if (key !== 'image' && value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        }
+      });
+      
+      response = await axios.put<Tour>(`${API_URL}/${id}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } else {
+      response = await axios.put<Tour>(`${API_URL}/${id}`, tourData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    }
     
     return response.data;
   } catch (error) {

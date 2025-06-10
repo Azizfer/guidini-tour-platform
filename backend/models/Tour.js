@@ -43,7 +43,7 @@ const tourSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    default: "/placeholder.svg?height=200&width=300"
+    default: ''
   },
   bookings: {
     type: Number,

@@ -1,10 +1,23 @@
-const Payment = require('../models/payment');
+const Payment = require('../models/Payment');
 const User = require('../models/User');
 const Tour = require('../models/Tour');
 const Notification = require('../models/Notification');
+const Reservation = require('../models/Reservation'); // Import Reservation model
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const mongoose = require('mongoose');
+
+// Suppress verbose DEBUG logs unless explicitly enabled
+const originalConsoleLog = console.log;
+console.log = (...args) => {
+  if (args.length && typeof args[0] === 'string' && args[0].startsWith('DEBUG:')) {
+    if (process.env.DEBUG === 'true') {
+      originalConsoleLog(...args);
+    }
+  } else {
+    originalConsoleLog(...args);
+  }
+};
 
 // Konnect API configuration
 // Load environment variables if not already loaded
@@ -18,13 +31,14 @@ const KONNECT_API_URL = process.env.KONNECT_API_URL || 'https://api.konnect.netw
 const KONNECT_API_KEY = process.env.KONNECT_API_KEY || 'test_ID:test_SECRET';
 
 // ID du portefeuille du destinataire (à définir dans les variables d'environnement)
-const RECEIVER_WALLET_ID = process.env.RECEIVER_WALLET_ID || 'test_wallet_id';
+// Support both KONNECT_RECEIVER_WALLET_ID and legacy RECEIVER_WALLET_ID
+const RECEIVER_WALLET_ID = process.env.KONNECT_RECEIVER_WALLET_ID || process.env.RECEIVER_WALLET_ID || 'test_wallet_id';
 
 // URL de base du backend pour les webhooks et redirections
-const BACKEND_URL = process.env.BACKEND_URL || 'https://api.guidini.tn';
+const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5001' : 'https://api.guidini.tn');
 
 // URL de redirection après paiement (frontend)
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://guidini.tn';
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://guidini.tn');
 
 // Initialize payment with Konnect
 exports.initializePayment = async (req, res) => {
@@ -38,7 +52,8 @@ exports.initializePayment = async (req, res) => {
       email,
       orderId,
       tourId,
-      userId
+      userId,
+      participants
     } = req.body;
 
     if (!amount || !description) {
@@ -140,6 +155,11 @@ exports.initializePayment = async (req, res) => {
         let payUrl = response.data.payUrl || response.data.link || response.headers?.location || '';
         let paymentRef = response.data.paymentRef || response.data.payment_reference || response.headers?.paymentref || response.headers?.paymentRef || '';
         
+        // If Konnect signalled error (errors array) or missing reference, break and handle later
+        if (!paymentRef) {
+          console.error('No paymentRef returned from Konnect. Full response:', JSON.stringify(response.data));
+        }
+        
         // If still missing, attempt to parse paymentRef from redirect URL
         if (!paymentRef && payUrl) {
           try {
@@ -159,18 +179,10 @@ exports.initializePayment = async (req, res) => {
         // Log extracted values
         console.log('Parsed Konnect response -> payUrl:', payUrl, ' paymentRef:', paymentRef);
         
-        // If we get here, the request was successful
-        console.log('Payment initialization successful. Response:', {
-          payUrl: payUrl,
-          paymentRef: paymentRef,
-          orderId: response.data.orderId || paymentData.orderId
-        });
-        
-        // Attach extracted values to response for later steps
-        response.data.payUrl = payUrl;
-        response.data.paymentRef = paymentRef;
-        
-        break;
+        // If we have a valid payUrl AND paymentRef, break the retry loop
+        if (payUrl && paymentRef) {
+          break;
+        }
       } catch (retryError) {
         retryCount++;
         console.error(`Attempt ${retryCount} failed:`, retryError.message);
@@ -191,6 +203,15 @@ exports.initializePayment = async (req, res) => {
           throw retryError;
         }
       }
+    }
+
+    // After retries, make sure we received a valid paymentRef
+    if (!response || !response.data || !response.data.paymentRef) {
+      return res.status(502).json({
+        success:false,
+        message:'Echec de l\'initialisation du paiement Konnect',
+        details: response ? response.data : null
+      });
     }
 
     // Save payment reference to database
@@ -284,7 +305,7 @@ exports.initializePayment = async (req, res) => {
         customerName: `${firstName || ''} ${lastName || ''}`.trim(),
         customerEmail: email || '',
         customerPhone: phoneNumber || '',
-        participants: paymentData.participants || 1,
+        participants: participants || 1,
         reservationDate: paymentData.date ? new Date(paymentData.date) : new Date(),
         paymentMethod: 'konnect'
       });
@@ -321,11 +342,11 @@ exports.initializePayment = async (req, res) => {
             // Create notification for the tourist (user)
             if (userId) {
               const recipientId = mongoose.Types.ObjectId.isValid(userId) 
-                ? mongoose.Types.ObjectId(userId) 
+                ? new mongoose.Types.ObjectId(userId) 
                 : userId;
               
               const tourObjectId = savedPayment.tourId && mongoose.Types.ObjectId.isValid(savedPayment.tourId)
-                ? mongoose.Types.ObjectId(savedPayment.tourId)
+                ? new mongoose.Types.ObjectId(savedPayment.tourId)
                 : undefined;
               
               console.log('Creating notification for tourist:', recipientId);
@@ -346,6 +367,7 @@ exports.initializePayment = async (req, res) => {
                   type: "payment",
                   tourId: tourObjectId,
                   amount: savedPayment.amount,
+                  paymentRef: savedPayment.paymentRef,
                   read: false
                 });
                 console.log('Notification pour touriste ajoutée à la liste');
@@ -374,11 +396,11 @@ exports.initializePayment = async (req, res) => {
                     console.log('Ajout d\'une notification pour le guide avec ID:', tour.guideId);
                     // Convertir les IDs en ObjectId si nécessaire
                     const guideId = mongoose.Types.ObjectId.isValid(tour.guideId)
-                      ? mongoose.Types.ObjectId(tour.guideId)
+                      ? new mongoose.Types.ObjectId(tour.guideId)
                       : tour.guideId;
                       
                     const tourObjectId = mongoose.Types.ObjectId.isValid(savedPayment.tourId)
-                      ? mongoose.Types.ObjectId(savedPayment.tourId)
+                      ? new mongoose.Types.ObjectId(savedPayment.tourId)
                       : undefined;
                     
                     // Check if a guide notification already exists
@@ -395,12 +417,61 @@ exports.initializePayment = async (req, res) => {
                         title: 'Nouvelle réservation',
                         description: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
                         tourId: tourId, // Add tourId for better tracking
+                        userId: savedPayment.userId,
+                        amount: savedPayment.amount,
+                        paymentRef: savedPayment.paymentRef,
                         read: false
                       });
                       
                       console.log('Notification created for guide:', guideId);
                     } else {
                       console.log('Guide notification already exists, skipping creation');
+                    }
+                    
+                    // Create a reservation document linked to this payment if it doesn't already exist
+                    try {
+                      const existingReservation = await Reservation.findOne({ paymentRef: savedPayment.paymentRef });
+                      if (!existingReservation) {
+                        // Determine tourist details
+                        let touristName = (savedPayment.customerName || '').trim();
+                        let touristEmail = savedPayment.customerEmail || '';
+                        let touristPhone = savedPayment.customerPhone || '';
+                        
+                        if (!touristName) {
+                          try {
+                            const touristUser = await User.findById(savedPayment.userId).select('name email phoneNumber');
+                            if (touristUser) {
+                              touristName = touristUser.name || touristName;
+                              touristEmail = touristEmail || touristUser.email || '';
+                              touristPhone = touristPhone || touristUser.phoneNumber || '';
+                            }
+                          } catch (userFetchErr) {
+                            console.error('Error fetching tourist user info:', userFetchErr);
+                          }
+                        }
+                        
+                        const reservation = new Reservation({
+                          tourId: tour._id,
+                          tourName: tour.title || tour.name || 'Tour',
+                          guideId: tour.guideId,
+                          touristId: savedPayment.userId,
+                          touristName: touristName || 'Client',
+                          touristEmail: touristEmail,
+                          touristPhone: touristPhone,
+                          date: savedPayment.reservationDate || new Date(),
+                          participants: savedPayment.participants || 1,
+                          totalPrice: savedPayment.amount || 0,
+                          status: 'confirmed',
+                          paymentRef: savedPayment.paymentRef
+                        });
+                        await reservation.save();
+                        // Emit real-time update to refresh reservation lists
+                        if (req.app.get('io')) {
+                          req.app.get('io').emit('reservationUpdate', { guideId: (tour.guideId || '').toString() });
+                        }
+                      }
+                    } catch (reservationError) {
+                      console.error('Error creating reservation from payment:', reservationError);
                     }
                     
                     // Update the guide's stats (payments and tourists)
@@ -459,7 +530,7 @@ exports.initializePayment = async (req, res) => {
             if (notifications.length > 0) {
               console.log('Tentative d\'insertion des notifications dans la base de données...');
               try {
-                const result = await Notification.insertMany(notifications);
+                const result = await Notification.insertMany(notifications, { ordered: false });
                 console.log('Résultat de l\'insertion:', result);
                 console.log(`${notifications.length} notifications créées automatiquement pour le paiement ${savedPayment.paymentRef}`);
               } catch (insertError) {
@@ -497,9 +568,9 @@ exports.initializePayment = async (req, res) => {
 
     // Return payment URL and reference
     res.json({
-      success: !!response.data.payUrl && !!response.data.paymentRef,
-      payUrl: response.data.payUrl || '',
-      paymentRef: response.data.paymentRef || '',
+      success: true,
+      payUrl: response.data.payUrl,
+      paymentRef: response.data.paymentRef,
       orderId: paymentData.orderId
     });
   } catch (error) {
@@ -668,6 +739,7 @@ exports.handleWebhook = async (req, res) => {
                         type: 'payment',
                         tourId: payment.tourId,
                         amount: payment.amount,
+                        paymentRef: payment.paymentRef,
                         read: false
                       });
                       console.log('Tourist payment notification added to list');
@@ -691,6 +763,7 @@ exports.handleWebhook = async (req, res) => {
                         type: 'payment',
                         tourId: tourId,
                         amount: paymentRecord.amount,
+                        paymentRef: paymentRecord.paymentRef,
                         read: false
                       });
                       console.log('Tourist payment notification added to list from payment record');
@@ -716,7 +789,8 @@ exports.handleWebhook = async (req, res) => {
                         type: 'reservation',
                         tourId: tour.tourId,
                         userId: payment.userId,
-                        amount: payment.amount
+                        amount: payment.amount,
+                        paymentRef: payment.paymentRef
                       });
                     } else {
                       console.log('Notification already exists for this reservation, skipping creation');
@@ -726,7 +800,7 @@ exports.handleWebhook = async (req, res) => {
                   console.log('Nombre de notifications à créer:', notifications.length);
                   
                   if (notifications.length > 0) {
-                    const result = await Notification.insertMany(notifications);
+                    const result = await Notification.insertMany(notifications, { ordered: false });
                     console.log(`${notifications.length} notifications créées pour le paiement ${payment.paymentRef}`);
                   } else {
                     console.log('Aucune notification à créer');
@@ -909,24 +983,21 @@ exports.handleWebhook = async (req, res) => {
               const existingReservation = await Reservation.findOne({ paymentRef: payment.paymentRef });
               
               if (!existingReservation) {
-                // Get tourist information from payment record
-                const userId = paymentRecord?.userId || 'unknown';
-                let touristName = 'Client';
-                let touristEmail = '';
-                let touristPhone = '';
+                // Determine tourist details
+                let touristName = (paymentRecord.customerName || '').trim();
+                let touristEmail = paymentRecord.customerEmail || '';
+                let touristPhone = paymentRecord.customerPhone || '';
                 
-                // Try to get tourist details if userId is available
-                if (userId && userId !== 'unknown') {
+                if (!touristName) {
                   try {
-                    const User = require('../models/User');
-                    const tourist = await User.findById(userId);
-                    if (tourist) {
-                      touristName = tourist.name || tourist.firstName + ' ' + tourist.lastName || 'Client';
-                      touristEmail = tourist.email || '';
-                      touristPhone = tourist.phone || '';
+                    const touristUser = await User.findById(paymentRecord.userId).select('name email phoneNumber');
+                    if (touristUser) {
+                      touristName = touristUser.name || touristName;
+                      touristEmail = touristEmail || touristUser.email || '';
+                      touristPhone = touristPhone || touristUser.phoneNumber || '';
                     }
-                  } catch (userError) {
-                    console.error('Error fetching tourist details:', userError);
+                  } catch (userFetchErr) {
+                    console.error('Error fetching tourist user info:', userFetchErr);
                   }
                 }
                 
@@ -935,14 +1006,14 @@ exports.handleWebhook = async (req, res) => {
                   tourId: tourId,
                   tourName: tour.title || tour.name || 'Tour',
                   guideId: guideId,
-                  touristId: userId,
-                  touristName: touristName,
+                  touristId: paymentRecord.userId,
+                  touristName: touristName || 'Client',
                   touristEmail: touristEmail,
                   touristPhone: touristPhone,
                   date: new Date(),
                   time: '12:00',
-                  participants: paymentRecord?.participants || 1,
-                  totalPrice: payment.amount || paymentRecord?.amount || 0,
+                  participants: paymentRecord.participants || 1,
+                  totalPrice: payment.amount || paymentRecord.amount || 0,
                   paymentRef: payment.paymentRef,
                   status: 'confirmed',
                   createdAt: new Date(),
@@ -976,6 +1047,9 @@ exports.handleWebhook = async (req, res) => {
                   title: 'Nouvelle réservation',
                   description: `Vous avez reçu une nouvelle réservation pour ${tour.title || 'votre tour'}.`,
                   tourId: tourId, // Add tourId for better tracking
+                  userId: payment.userId,
+                  amount: payment.amount,
+                  paymentRef: payment.paymentRef,
                   read: false
                 });
                 

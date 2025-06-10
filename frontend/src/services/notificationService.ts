@@ -10,7 +10,7 @@ const axiosInstance = axios.create({
 });
 
 // Define notification types
-export type NotificationType = 'booking' | 'payment' | 'review' | 'system' | 'booking_confirmation' | 'booking_cancellation';
+export type NotificationType = 'booking' | 'payment' | 'review' | 'system' | 'booking_confirmation' | 'booking_cancellation' | 'group_invite';
 
 // Define notification interface
 export interface Notification {
@@ -386,11 +386,7 @@ const notificationService = {
       
       console.log('Token found:', token.substring(0, 10) + '...');
 
-      // Check if the guide is reserving their own tour
-      const isSelfReservation = userId === guideId;
-      console.log('Is self reservation?', isSelfReservation, { userId, guideId });
-      
-      // Create notifications
+      // Create tourist notification
       const touristNotification = {
         title: "Paiement confirmé",
         description: `Votre paiement de ${amount} TND pour ${tourTitle} a été confirmé.`,
@@ -401,21 +397,8 @@ const notificationService = {
         amount
       };
       
-      // Only create guide notification if it's not a self-reservation
-      const notificationPayload = isSelfReservation 
-        ? { touristNotification } 
-        : { 
-            touristNotification,
-            guideNotification: {
-              title: "Nouvelle réservation",
-              description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${amount} TND.`,
-              type: "booking",
-              tourId,
-              recipient: guideId,
-              read: false,
-              amount
-            }
-          };
+      // Payload only includes tourist notification to avoid duplicate guide notifications
+      const notificationPayload = { touristNotification };
       
       console.log('Payment notifications payload:', notificationPayload);
       
@@ -463,9 +446,6 @@ const notificationService = {
       // Create local notifications as fallback
       console.log('API call failed, creating local notifications as fallback');
       
-      // Check if the guide is reserving their own tour
-      const isSelfReservation = userId === guideId;
-      
       // Create tourist notification locally
       addLocalNotification({
         title: "Paiement confirmé",
@@ -474,18 +454,6 @@ const notificationService = {
         tourId,
         userId
       });
-      
-      // Create guide notification locally only if not self-reservation
-      if (!isSelfReservation) {
-        addLocalNotification({
-          title: "Nouvelle réservation",
-          description: `Une nouvelle réservation a été confirmée pour votre tour avec un paiement de ${amount} TND.`,
-          type: "booking",
-          tourId,
-          guideId,
-          amount
-        });
-      }
       
       return true; // Return true since we created local notifications
     }
