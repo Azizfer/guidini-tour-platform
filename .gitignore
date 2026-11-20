@@ -1,4 +1,22 @@
-# Ignore video files
+# Local environment files (never commit live credentials)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Installed dependencies and generated outputs
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/coverage/
+
+# Logs and local tooling
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Large local video asset
 TunisiaVideo.mp4
-node_modules/
-.next/
