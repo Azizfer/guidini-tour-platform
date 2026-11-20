@@ -1,0 +1,21 @@
+"use client"
+
+import  Destinations from "./components/Destinations"
+import Header from '@/components/Header';
+import Footer from '@/components/footer';
+import ChatButton from '@/components/Chatbot';
+import { ThemeProvider } from 'next-themes';
+
+export default function DestinationPage() {
+    return (
+      <ThemeProvider attribute="class">
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-1">
+            <Destinations /> 
+          </main>
+          <ChatButton />
+        </div>
+      </ThemeProvider>
+    );
+  }
