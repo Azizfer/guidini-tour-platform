@@ -1,0 +1,29 @@
+{
+  "name": "guidini",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "npm start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.11",
+    "@radix-ui/react-popover": "^1.1.11",
+    "@sendgrid/mail": "^8.1.5",
+    "cloudinary": "^2.6.1",
+    "framer-motion": "^12.9.2",
+    "jsonwebtoken": "^9.0.2",
+    "mapbox-gl": "^3.11.1",
+    "react-device-detect": "^2.2.3"
+  }
+}
